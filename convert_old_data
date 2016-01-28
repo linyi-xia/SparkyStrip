@@ -1,0 +1,30 @@
+#!/usr/bin/python
+'''
+Created on Jan 27, 2016
+
+@author: Jeffrey Thompson
+
+This is for converting the old data files into the new format with real and immaginary 
+instead of magniture and phase. output is in format to past into c++ as a 2d array
+'''
+
+import re, sys
+from math import cos, sin, pi
+
+state = 1;
+with open(sys.argv[1]) as file:
+    for line in file:
+        match = re.search(':\s*(\d+\.?\d*)[^\d]*(\d+\.?\d*)', line)
+        if not match:
+            state = 1
+            output = '{'
+            continue
+        a, b = (float(x) for x in match.groups())
+        if state == 1:
+            output+='{}, {}'.format(a,b)
+        else:
+            output+=', {}, {}'.format(cos(b*pi/180)*a, sin(b*pi/180)*a)
+            if state == 5:
+                print(output+'},')
+                state = 0
+        state+=1
