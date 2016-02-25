@@ -5,7 +5,7 @@ Created on Jan 27, 2016
 @author: Jeffrey Thompson
 
 This is for converting the old data files into the new format with real and immaginary 
-instead of magniture and phase. output is in format to past into c++ as a 2d array
+instead of magnitude and phase. output is in format to past into c++ as a 2d array
 '''
 
 import re, sys
