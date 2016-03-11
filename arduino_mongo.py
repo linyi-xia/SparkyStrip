@@ -14,7 +14,7 @@ MONGO_URI = 'mongodb://sparkystrip:calplug123@ds011429.mlab.com:11429/sparkystri
 MONGO_DATABASE = 'sparkystrip'
 HOST = ''
 PORT = 12021
-
+DEVICE_NAME = "TESTING_DEVICE"
 
 
 
@@ -28,7 +28,8 @@ def json_encode(encode_data:[int], device_IP) -> json :
                      'Time': str(datetime.datetime.utcnow()),
                      'Type': 'Voltage',
                      'Real': encode_data[2:6],
-                     'Imaginary': encode_data[6:]}]
+                     'Imaginary': encode_data[6:],
+                     'Device Name': DEVICE_NAME}]
     else :
         json_data = [{'Device IP': device_IP,
                       'Time': str(datetime.datetime.utcnow()),
@@ -36,15 +37,16 @@ def json_encode(encode_data:[int], device_IP) -> json :
                       'Real': encode_data[2:6],
                       'Imaginary': encode_data[6:],
                       'Power' : encode_data[0],
-                      'Power Factor' : encode_data[1]}]
+                      'Power Factor' : encode_data[1],
+                      'Device Name': DEVICE_NAME}]
     return json.dumps(json_data)
 
 def return_int_ip() -> int :
     self_ip = [(s.connect(('8.8.8.8', 80)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
     return struct.unpack("!I", socket.inet_aton(self_ip))[0]
 
-
-
+if len(sys.argv) == 2:
+    COLLECTION_NAME = sys.argv[1].strip()
 
 print("IP FOR THIS DEVICE : ", return_int_ip())
 print("Port :",PORT);
@@ -62,7 +64,7 @@ dirty_sock.listen(5)
 print('Waiting to accept connection...')
 connection, address = dirty_sock.accept()
 
-mongo_collection = mongo_db["TESTING_DATA"]
+mongo_collection = mongo_db[COLLECTION_NAME]
 
 def signal_handler(signal, frame):
 	print('Closing connection.')
