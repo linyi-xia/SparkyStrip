@@ -579,7 +579,6 @@ void setup() {
     PAST_DATA = data + MAX_SAMPLES;
 
     AD.setup();
-    delay(5000);
     AD.write_int(LINECYC, lineCyc); // make line-cycle accumulation produce power readings
     AD.write_byte(CH1OS, ch1os);    // integrator setting
     AD.write_byte(GAIN, gain);      // gain adjust

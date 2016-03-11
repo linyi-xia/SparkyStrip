@@ -8,7 +8,7 @@
 
 //Adjust these to scale values //
 const float power_ratio =  0.848;   //supposedly should be .848
-const float power_scaler = .33;  
+const float power_scaler = .32;  
 const int   min_power = 10;  
 
 

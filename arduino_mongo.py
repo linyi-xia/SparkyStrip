@@ -77,7 +77,7 @@ def signal_handler(signal, frame):
 	sys.exit(0)
 	
 signal.signal(signal.SIGINT, signal_handler)
-out_file.write('Device IP, Time, Type ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
+out_file.write('Device IP, Date, Power, Power_Factor ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
 
 print('Connected by', address)
 while True :
