@@ -29,6 +29,7 @@ divider_process p420(420);
 long  base_active_power = 0;
 float base_power_factor = 0;
 float power_factor, active_power;
+int first = 0;
 
 /////////////////////// Serial input processing ////////////////////////////
 
@@ -286,25 +287,25 @@ void send_update_v(){
     {
         Serial.print("\nVoltage Results:");
         Serial.print("\n60hz: ");
-        Serial.print(v60.amplitude());
+        Serial.print(v60.real);
         Serial.print(" ");
-        Serial.print(v60.phase());
+        Serial.print(v60.imaginary);
         Serial.print("\n180hz: ");
-        Serial.print(v180.amplitude());
+        Serial.print(v180.real);
         Serial.print(" ");
-        Serial.print(v180.phase());
+        Serial.print(v180.imaginary);
         Serial.print("\n300hz: ");
-        Serial.print(v300.amplitude());
+        Serial.print(v300.real);
         Serial.print(" ");
-        Serial.print(v300.phase());
+        Serial.print(v300.imaginary);
         Serial.print("\n420hz: ");
-        Serial.print(v420.amplitude());
+        Serial.print(v420.real);
         Serial.print(" ");
-        Serial.print(v420.phase());
+        Serial.print(v420.imaginary);
         Serial.print('\n');
     }
 #ifdef WIFI
-    //float wifi_package[10] = { 0,0,v60.amplitude(),v60.phase(),v180.amplitude(),v180.phase(),v300.amplitude(),v300.phase(),v420.amplitude(),v420.phase()};
+    //float wifi_package[10] = { 0,0,v60.real,v60.imaginary,v180.real,v180.imaginary,v300.real,v300.imaginary,v420.real,v420.imaginary};
     //write_data(wifi_package);
 #endif
 }
@@ -318,25 +319,25 @@ void send_update_i(){
         Serial.print(" Power_Factor: ");
         Serial.print(power_factor);
         Serial.print("\n60hz: ");
-        Serial.print(i60.amplitude());
+        Serial.print(i60.real);
         Serial.print(" ");
-        Serial.print(i60.phase());
+        Serial.print(i60.imaginary);
         Serial.print("\n180hz: ");
-        Serial.print(i180.amplitude());
+        Serial.print(i180.real);
         Serial.print(" ");
-        Serial.print(i180.phase());
+        Serial.print(i180.imaginary);
         Serial.print("\n300hz: ");
-        Serial.print(i300.amplitude());
+        Serial.print(i300.real);
         Serial.print(" ");
-        Serial.print(i300.phase());
+        Serial.print(i300.imaginary);
         Serial.print("\n420hz: ");
-        Serial.print(i420.amplitude());
+        Serial.print(i420.real);
         Serial.print(" ");
-        Serial.print(i420.phase());
+        Serial.print(i420.imaginary);
         Serial.print('\n');
     }
 #ifdef WIFI
-    float wifi_package[10] = {active_power,power_factor,i60.amplitude(),i60.phase(),i180.amplitude(),i180.phase(),i300.amplitude(),i300.phase(),i420.amplitude(),i420.phase()};
+    float wifi_package[10] = {active_power,power_factor,i60.real,i180.real,i300.real,i420.real,i60.imaginary,i180.imaginary,i300.imaginary,i420.imaginary};
     write_data(wifi_package);
 #endif
 }
@@ -468,8 +469,11 @@ void process_mode_2(){
             i300.adjust_phase(phase_offset);
             i420.adjust_phase(phase_offset);
         }
-        send_update_i();
-        
+        if( first )
+          first = 0;
+        else
+          send_update_i();
+          
         ++recalibrate_counter;
         if (recalibrate_counter == RECALIBRATE_CYCLES)
             run = startup;
@@ -536,6 +540,7 @@ void startup_1(){
 //    if(Serial)
 //        dump_data();
     send_update_v();
+    first = 1;
     run = process_mode;
 }
 
