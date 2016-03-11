@@ -8,6 +8,7 @@ import json
 import datetime
 from pymongo import MongoClient
 import struct
+import subprocess
 
 DATA_LENGTH = 10
 MONGO_URI = 'mongodb://sparkystrip:calplug123@ds011429.mlab.com:11429/sparkystrip'
@@ -47,8 +48,12 @@ def return_int_ip() -> int :
     self_ip = [(s.connect(('8.8.8.8', 80)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
     return struct.unpack("!I", socket.inet_aton(self_ip))[0]
 
-if len(sys.argv) == 2:
-    DEVICE_NAME = sys.argv[1].strip()
+if len(sys.argv) == 3:
+    TRAIN = True if sys.argv[1].strip() == "train" else False
+    DEVICE_NAME = sys.argv[2].strip()
+else:
+    print("Wrong number of arguments.")
+    sys.exit(2)
 
 print("IP FOR THIS DEVICE : ", return_int_ip())
 print("Port :",PORT);
@@ -79,7 +84,7 @@ signal.signal(signal.SIGINT, signal_handler)
 out_file.write('Device IP, Date, Power, Power_Factor ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
 
 print('Connected by', address)
-while True :
+for i in range(75 if TRAIN else 20) :
     try :
         raw_data = connection.recv(1024)
         usable_data = parse_socket_data(raw_data)
@@ -93,3 +98,7 @@ while True :
         print('ERROR : ', str(error))
         continue
 
+out_file.close()
+connection.close()
+dirty_sock.close()
+print("arduino_mongo ending after closing file and socket.")
