@@ -59,30 +59,25 @@ out_file = open('Local_Data.csv', 'a')
 mongo_connect = MongoClient(MONGO_URI)
 mongo_db = mongo_connect[MONGO_DATABASE]
 
-dirty_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+dirty_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 dirty_sock.bind((HOST, PORT))
-dirty_sock.listen(5)
 
-
-print('Waiting to accept connection...')
-connection, address = dirty_sock.accept()
 
 mongo_collection = mongo_db["TESTING_DATA"]
 
 def signal_handler(signal, frame):
-	print('Closing connection.')
+	print('Closing connections.')
 	out_file.close()
-	connection.close()
 	dirty_sock.close()
 	sys.exit(0)
 	
 signal.signal(signal.SIGINT, signal_handler)
+
 out_file.write('Device IP, Date, Power, Power_Factor ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
 
-print('Connected by', address)
 while True :
     try :
-        raw_data = connection.recv(1024)
+        raw_data, address = dirty_sock.recvfrom(1024)
         usable_data = parse_socket_data(raw_data)
         if usable_data == [float(0) for i in range(DATA_LENGTH)] :
             break
