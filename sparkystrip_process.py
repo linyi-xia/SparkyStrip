@@ -14,16 +14,18 @@ while(keep_going):
         max_device_name = input("What is the max 'Device Name'? If you haven't added any devices, the default is 3:")
         assert max_device_name.isnumeric()
         print("Taking samples to identify device.")
-   
-    call('python3 arduino_mongo.py '  + ('train ' if train else 'test ') + device_name, shell = True)
-    
+  
+    if train:
+        call('python3 arduino_mongo.py '  + 'train ' + device_name, shell = True)
     if not train:
-        call('python3 ' + 'create_predict_x.py ' + device_name, shell = True)
-        call('python3 ' + 'device_identification.py ' + (' '.join([str(x) for x in range(1, int(max_device_name)+1)])), shell = True)
-        with open('predict_Y', 'r') as Y:
-            detect_count = []
-            for line in Y:
-                detect_count.append(line.strip())
-            print("The Device Name your device identified as is:", max(set(detect_count), key=detect_count.count))
+        while True:
+            call('python3 arduino_mongo.py '  + 'test ' + device_name, shell = True)
+            call('python3 ' + 'create_predict_x.py ' + device_name, shell = True)
+            call('python3 ' + 'device_identification.py ' + (' '.join([str(x) for x in range(0, int(max_device_name)+1)])), shell = True)
+            with open('predict_Y', 'r') as Y:
+                detect_count = []
+                for line in Y:
+                    detect_count.append(line.strip())
+                print("\nThe Device Name your device identified as is:", max(set(detect_count), key=detect_count.count) + '\n')
     
     keep_going = True if input("Keep going?")[0].lower() == 'y' else False

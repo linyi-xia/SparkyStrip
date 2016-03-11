@@ -80,7 +80,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 out_file.write('Device IP, Date, Power, Power_Factor ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
 
-for i in range(75 if TRAIN else 20) :
+for i in range(75 if TRAIN else 5) :
     try :
         raw_data, address = dirty_sock.recvfrom(1024)
         usable_data = parse_socket_data(raw_data)

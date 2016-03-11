@@ -1,5 +1,3 @@
-# python script to handle device ID
-
 import sys
 from pymongo import MongoClient
 
@@ -36,3 +34,5 @@ try:
                 X.write(line + '\n')
 except:
     print("Failed operation.")
+
+mongo_collection.drop()
