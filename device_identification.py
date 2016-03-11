@@ -16,8 +16,6 @@ mongo_collection = None
 
 np.random.seed(0)
 
-created_files = []
-
 training_names = []
 if len(sys.argv) >= 2:
     for i in range(1, len(sys.argv)):

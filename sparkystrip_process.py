@@ -10,7 +10,7 @@ while(keep_going):
         assert device_name.isnumeric()
         print("Taking samples to train machine learning model.")
     else:
-        device_name = input("Assign a name for the test sample set, ideal naming convention is '<integer 'Device Name'>_test':")
+        device_name = "realtime" 
         max_device_name = input("What is the max 'Device Name'? If you haven't added any devices, the default is 3:")
         assert max_device_name.isnumeric()
         print("Taking samples to identify device.")
