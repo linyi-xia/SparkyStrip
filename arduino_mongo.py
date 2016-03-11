@@ -1,5 +1,8 @@
+#!/usr/bin/env python
 __author__ = 'edmund'
 
+import signal
+import sys
 import socket
 import json
 import datetime
@@ -11,6 +14,9 @@ MONGO_URI = 'mongodb://edmund:silver@ds045107.mongolab.com:45107/calplug_edmund'
 MONGO_DATABASE = 'calplug_edmund'
 HOST = ''
 PORT = 12021
+
+
+
 
 def parse_socket_data(socket_data) -> (int):
     return struct.unpack('f'*DATA_LENGTH, socket_data)
@@ -37,6 +43,9 @@ def return_int_ip() -> int :
     self_ip = [(s.connect(('8.8.8.8', 80)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
     return struct.unpack("!I", socket.inet_aton(self_ip))[0]
 
+
+
+
 print("IP FOR THIS DEVICE : ", return_int_ip())
 print("Port :",PORT);
 out_file = open('CalPlug_Local_Data', 'a')
@@ -48,10 +57,22 @@ mongo_db = mongo_connect[MONGO_DATABASE]
 dirty_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 dirty_sock.bind((HOST, PORT))
 dirty_sock.listen(5)
+
+
 print('Waiting to accept connection...')
 connection, address = dirty_sock.accept()
 
 mongo_collection = mongo_db[str(address[0])]
+
+def signal_handler(signal, frame):
+	print('Closing connection.')
+	out_file.close()
+	connection.close()
+	dirty_sock.close()
+	sys.exit(0)
+	
+signal.signal(signal.SIGINT, signal_handler)
+
 
 print('Connected by', address)
 while True :
@@ -67,8 +88,4 @@ while True :
     except Exception as error:
         print('ERROR : ', str(error))
         continue
-print('Closing connection.')
 
-
-out_file.close()
-connection.close()
