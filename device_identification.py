@@ -41,14 +41,14 @@ try:
 except:
     print("Failed operation.")
 
-X_train = np.genfromtext("training_X", delimiter = ',')
-Y_train = np.genfromtext("training_Y", delimiter = ',')
+X_train = np.genfromtxt("training_X", delimiter = ',')
+Y_train = np.genfromtxt("training_Y", delimiter = ',')
 
-X_predict = np.genfromtext("predict_X", delimiter = ',')
+X_predict = np.genfromtxt("predict_X", delimiter = ',')
 
 lr = ml.linear.linearRegress(X_train, Y_train)
 Y_predict = lr.predict(X_predict)
 
 with open('predict_Y', 'w') as pre_Y:
     for Y_i in Y_predict:
-        pre_Y.write(str(Y_i[0] + '\n'))
+        pre_Y.write(str(int(round(Y_i[0]))) + '\n')

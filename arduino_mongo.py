@@ -16,8 +16,6 @@ HOST = ''
 PORT = 12021
 DEVICE_NAME = "TESTING_DEVICE"
 
-
-
 def parse_socket_data(socket_data) -> (int):
     return struct.unpack('f'*DATA_LENGTH, socket_data)
 
@@ -37,13 +35,8 @@ def json_encode(encode_data:[int], device_IP) -> json :
                       'Real': encode_data[2:6],
                       'Imaginary': encode_data[6:],
                       'Power' : encode_data[0],
-<<<<<<< HEAD
                       'Power Factor' : encode_data[1],
                       'Device Name': DEVICE_NAME}]
-=======
-                      'Power Factor' : encode_data[1]}]
-    
->>>>>>> 7525e4bfdaf25221303f3310d8577ca10ae051bc
     return json.dumps(json_data)
     
 def save_data(encode_data:[int], device_IP, out_file) -> None:
@@ -55,7 +48,7 @@ def return_int_ip() -> int :
     return struct.unpack("!I", socket.inet_aton(self_ip))[0]
 
 if len(sys.argv) == 2:
-    COLLECTION_NAME = sys.argv[1].strip()
+    DEVICE_NAME = sys.argv[1].strip()
 
 print("IP FOR THIS DEVICE : ", return_int_ip())
 print("Port :",PORT);
@@ -73,7 +66,7 @@ dirty_sock.listen(5)
 print('Waiting to accept connection...')
 connection, address = dirty_sock.accept()
 
-mongo_collection = mongo_db[COLLECTION_NAME]
+mongo_collection = mongo_db[DEVICE_NAME]
 
 def signal_handler(signal, frame):
 	print('Closing connection.')
