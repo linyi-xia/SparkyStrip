@@ -132,7 +132,7 @@ bool setup_cc3000()
   }
 
   /* Attempt to connect to an access point */
-  char *ssid = WLAN_SSID;             /* Max 32 chars */
+  const char *ssid = WLAN_SSID;             /* Max 32 chars */
   if(Serial)
     Serial.print(F("Attempting to connect to ")); Serial.println(ssid);
 
@@ -189,45 +189,27 @@ bool tcp_connect (uint32_t tcp_ip, uint16_t tcp_port)
     return false;
 }
 
-void write_random_data(uint16_t iterations)
-{
-  randomSeed(analogRead(0));
-  for (uint16_t i = 0; i < iterations; i++)
-  {
-    float random_string1[] = {random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000),};
-    float random_string2[] = {0, 0, random(1, 1000000), random(1, 1000000),random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000),};
-    Serial.println(F("Writing data."));
-    if(!write_data(random_string1))
-    {
-      Serial.println(F("Error writing random data."));
-      break;
-    }
-    Serial.println(F("Data written."));
-    delay_loop();
-    Serial.println(F("Writing data."));
-    if(!write_data(random_string2))
-    {
-      Serial.println(F("Error writing random data."));
-      break;
-    }
-    Serial.println(F("Data written."));
-    delay_loop();
-  }
-}
 
 bool write_data(float data[])
 {
+
+
   while (!cc3000.checkConnected())
   {
     cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY);
   }
-  if (cc3000.checkConnected())
-  {
-    pi_connection.write(data, DATA_LEN);
-    delay_loop();
-    return true;
-  }
-  return false;
+  while(!pi_connection.connected() )
+ #ifdef USE_UDP
+      pi_connection = cc3000.connectUDP(IP, PORTNO);
+ #else   
+      pi_connection = cc3000.connectTCP(IP, PORTNO);
+ #endif
+      
+  pi_connection.write(data, DATA_LEN);
+ #ifdef USE_UDP
+  pi_connection.close();
+ #endif
+  return true;
 }
 
 void close_connection()

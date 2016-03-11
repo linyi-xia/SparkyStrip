@@ -62,14 +62,8 @@ dirty_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 dirty_sock.bind((HOST, PORT))
 
 
-<<<<<<< HEAD
 mongo_collection = mongo_db["TESTING_DATA"]
-=======
-print('Waiting to accept connection...')
-connection, address = dirty_sock.accept()
 
-mongo_collection = mongo_db[DEVICE_NAME]
->>>>>>> ce144e5e47dc5cb5235b3f9c67d368197affe3e9
 
 def signal_handler(signal, frame):
 	print('Closing connections.')
