@@ -67,7 +67,7 @@ dirty_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 dirty_sock.bind((HOST, PORT))
 
 
-mongo_collection = mongo_db["TESTING_DATA"]
+mongo_collection = mongo_db[DEVICE_NAME]
 
 
 def signal_handler(signal, frame):
@@ -80,7 +80,6 @@ signal.signal(signal.SIGINT, signal_handler)
 
 out_file.write('Device IP, Date, Power, Power_Factor ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
 
-print('Connected by', address)
 for i in range(75 if TRAIN else 20) :
     try :
         raw_data, address = dirty_sock.recvfrom(1024)
@@ -96,6 +95,5 @@ for i in range(75 if TRAIN else 20) :
         continue
 
 out_file.close()
-connection.close()
 dirty_sock.close()
 print("arduino_mongo ending after closing file and socket.")
