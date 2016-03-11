@@ -422,14 +422,9 @@ void process_mode_2(){
     //Serial.println(index);
     if(segment_count == SEGMENTS_TO_READ)
     {
-        //dump_data();
-//        if(start_phase.phase() > 180)
-//            start_phase.set_offset(START_PHASE_CORRECTION);
-//        else
-//            start_phase.set_offset(START_PHASE_CORRECTION+180);
+
         float phase_offset = start_phase.phase();
-//        if(phase_offset > 90)
-//            phase_offset -= 180;
+        
         active_power = AD.read_long(RAENERGY)*power_ratio;
 //        if(active_power < min_power)
 //        {
@@ -465,9 +460,9 @@ void process_mode_2(){
             i300 = p300.process_all(data+count);
             i420 = p420.process_all(data+count);
             i60.adjust_phase(phase_offset);
-            i180.adjust_phase(phase_offset);
-            i300.adjust_phase(phase_offset);
-            i420.adjust_phase(phase_offset);
+            i180.adjust_phase(phase_offset/3);
+            i300.adjust_phase(phase_offset/5);
+            i420.adjust_phase(phase_offset/7);
         }
         if( first )
           first = 0;

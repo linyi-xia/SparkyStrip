@@ -20,7 +20,7 @@ const int   min_power = 10;
 #define USE_UDP
 
 // IP address as and integer
-const unsigned long IP = 2850696212;
+const unsigned long IP = 2850699055;
 //enter port no for the server
 const int PORTNO = 12021;
 

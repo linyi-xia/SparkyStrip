@@ -102,12 +102,6 @@ public:
     float phase()
     {
         float my_phase = atan2f(imaginary, real);
-        my_phase*=180/PI;
-        //loops just for completeness, should never actually loop
-        while(my_phase<0)
-            my_phase += 360;
-        while(my_phase>360)
-            my_phase -= 360;
         return my_phase;
     }
     void operator += (const Goerzel_result& other)
