@@ -232,7 +232,6 @@ long AD_Chip::read_waveform(){
   }data;
   noInterrupts();
 #ifdef DUE
-  Serial.println("yep");
   SPI.transfer(AD_cs_pin, WAVEFORM, SPI_CONTINUE);
   delayMicroseconds(1);
   data.as_bytes[2] = SPI.transfer(AD_cs_pin, 0x00, SPI_CONTINUE);        //swap endian order

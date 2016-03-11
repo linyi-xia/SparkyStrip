@@ -67,12 +67,6 @@ const int NYQUIST = SAMPLE_RATE/2;
 const int PERIODS_SAMPLED      = MAX_SAMPLES/SAMPLES_PER_PERIOD;
 const int TIME_BETWEEN_SAMPLES = 1000000/SAMPLE_RATE; //in us
 
-/// trying fixed point stuff ///s
-const int BITSPERCYCLE = 16;
-const int Q_INT = pow(2,BITSPERCYCLE);
-const float Q_FLOAT = Q_INT;
-const int BITSPERQUARTER = BITSPERCYCLE-2;
-const float A_DFT_CONST = Q_FLOAT/((float)AD_CLOCK/SAMPLING_DIV);
 
 const int lineCyc = 12;  // 6 cycles so there are 10 'segments' per second.  
 

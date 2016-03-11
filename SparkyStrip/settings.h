@@ -12,15 +12,15 @@ const float power_scaler = .19;
 const int   min_power = 10;  
 
 
-#define WLAN_SSID       "Newberry"        // cannot be longer than 32 characters!
-#define WLAN_PASS       "Friend01"
+#define WLAN_SSID       "UCInet Mobile Access"        // cannot be longer than 32 characters!
+#define WLAN_PASS       ""
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
-#define WLAN_SECURITY   WLAN_SEC_WPA2
+#define WLAN_SECURITY   WLAN_SEC_UNSEC
 
 // IP address as and integer
-const long IP = 3232235918;
+const unsigned long IP = 2850696212;
 //enter port no for the server
-const int PORTNO = 12015;
+const int PORTNO = 12021;
 
 #define INTEGRATOR
 

@@ -21,14 +21,14 @@ def json_encode(encode_data:[int], device_IP) -> json :
         json_data = [{'Device IP': device_IP,
                      'Time': str(datetime.datetime.utcnow()),
                      'Type': 'Voltage',
-                     'Amplitude': encode_data[2:6],
-                     'Phase': encode_data[6:]}]
+                     'Real': encode_data[2:6],
+                     'Imaginary': encode_data[6:]}]
     else :
         json_data = [{'Device IP': device_IP,
                       'Time': str(datetime.datetime.utcnow()),
                       'Type': 'Current',
-                      'Amplitude': encode_data[2:6],
-                      'Phase': encode_data[6:],
+                      'Real': encode_data[2:6],
+                      'Imaginary': encode_data[6:],
                       'Power' : encode_data[0],
                       'Power Factor' : encode_data[1]}]
     return json.dumps(json_data)
@@ -38,6 +38,7 @@ def return_int_ip() -> int :
     return struct.unpack("!I", socket.inet_aton(self_ip))[0]
 
 print("IP FOR THIS DEVICE : ", return_int_ip())
+print("Port :",PORT);
 out_file = open('CalPlug_Local_Data', 'a')
 
 
@@ -60,7 +61,7 @@ while True :
         if usable_data == [float(0) for i in range(DATA_LENGTH)] :
             break
         json_dict = json.loads(json_encode(usable_data, address))
-        print('Inserting data : ', json_dict)
+        print('Inserting data : ', json_dict,'\n')
         out_file.write(str(json_dict))
         mongo_collection.insert(json_dict)
     except Exception as error:

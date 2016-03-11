@@ -39,9 +39,6 @@ must be the ICSP/SPI header on the DUE. Pin 1 of that header is the corner close
   //#include <EEPROM.h>
 #endif
 
-//uncomment the line below to use my bit-banging SPI implimentation
-//#define own_spi
-
 
 ////////////////////////////// The Class definition ///////////////////////////////
 
@@ -82,109 +79,23 @@ public:
   int irq_status;
 };
 
-
-
-#if defined(__arm__) && defined(__SAM3X8E__) // Arduino Due
-  #define DUE 
-  //DueFlashStorage dueFlashStorage;
-#endif
-
-void SI(int data){
-  byte* acc = (byte*)&data;
-  //Serial.write(acc[1]);  
-  //Serial.write(acc[0]);  
-}
-
-
-inline 
-void save(byte loc, byte data){
-#ifdef DUE
-  //dueFlashStorage.write(loc,data);
-#else
-  //EEPROM.write(loc,data);
-#endif
-}
-
-inline 
-byte load(byte loc){
-#ifdef DUE
-  //return dueFlashStorage.read(loc);
-#else
-  //return EEPROM.read(loc);
-#endif
-}
-
-// set all the eeprom locations for registry values to defaults
-void initalize_eeprom(){
-    // default values for all the writable registers
-    //Serial.write("Setting default values to EEPROM\n");
-    save(1,0x58); //MODE
-    save(2,0x0c);
-    save(3,0x00); //IRQEN
-    save(4,0x40);
-    save(5,0x00); //CH10S
-    save(6,0x00); //CH20S
-    save(7,0x00); //GAIN
-    save(8,0x0D); //PHCAL  (6 bits right alligned)
-    save(9,0x00); //APOS
-    save(10,0x00);
-    save(11,0x00); //WGAIN (12 bits right alligned)
-    save(12,0x00);
-    save(13,0x00); //WDIV
-    save(14,0x00); //CFNUM (12 bits right alligned)
-    save(15,0x3F);
-    save(16,0x00); //CFDEN (12 bits right alligned)
-    save(17,0x3F);
-    save(18,0x00); //IMRMSOS (12 bits right alligned)
-    save(19,0x00);
-    save(20,0x00); //VRMSOS (12 bits right alligned)
-    save(21,0x00);
-    save(22,0x00); //VAGAIN (12 bits right alligned)
-    save(23,0x00);
-    save(24,0x00); //VADIV
-    save(25,0xFF); //LINECYC
-    save(26,0xFF);
-    save(27,0x0F); //ZXTOUT (12 bits right alligned)
-    save(28,0xFF);
-    save(29,0xFF); //SAGECYC
-    save(30,0x00); //SAGLVL
-    save(31,0xFF); //IPKLVL
-    save(32,0xFF); //VPKLVL
-    save(0,0xAA);  //Flag incicating these are set
-}
-
-
-void irq_state()
-{
-    Serial.print(micros());
-    if(digitalRead(AD_interrupt_pin))
-        Serial.print(" HIGH\n");
-    else
-        Serial.print(" LOW\n");
-}
+////////////////////////// Functions //////////////////////////////////////
 
 void AD_Chip::setup(){
     // initalize pins:
   pinMode(AD_reset, OUTPUT);
   pinMode(AD_interrupt_pin, INPUT);
-  digitalWrite(AD_reset, HIGH); //reset the AD chip
-#ifndef DUE
-  pinMode(AD_cs_pin, OUTPUT);
-  digitalWrite(AD_cs_pin, HIGH);
-#endif
+  digitalWrite(AD_reset, LOW); //reset the AD chip
   
-
-#ifdef own_spi
-  pinMode(MOSI, OUTPUT);
-  pinMode(MISO, INPUT);
-  pinMode(SCK, OUTPUT);
-#elif defined(DUE)
+#if defined(DUE)
   SPI.begin(AD_cs_pin);
-  SPI.setClockDivider(AD_cs_pin, 50);
+  SPI.setClockDivider(AD_cs_pin, 5);
   SPI.setBitOrder(AD_cs_pin, MSBFIRST);
   SPI.setDataMode(AD_cs_pin, SPI_MODE1);
   
 #else
+  pinMode(AD_cs_pin, OUTPUT);
+  digitalWrite(AD_cs_pin, HIGH);
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV2);  //DIV2 does not work
   SPI.setBitOrder(MSBFIRST);
@@ -225,14 +136,13 @@ void AD_Chip::setup(){
 //no delay needed for reading the waveform
 inline
 long AD_Chip::read_waveform(){
-  //TODO: make this generic, for now assumes a 24 bit signed register
+  // can use shorter delays, hence the separate function
   union{
     long as_long;
     byte as_bytes[4];
   }data;
   noInterrupts();
 #ifdef DUE
-  Serial.println("yep");
   SPI.transfer(AD_cs_pin, WAVEFORM, SPI_CONTINUE);
   delayMicroseconds(1);
   data.as_bytes[2] = SPI.transfer(AD_cs_pin, 0x00, SPI_CONTINUE);        //swap endian order
@@ -351,10 +261,6 @@ void AD_Chip::write_int(byte reg, int data){
   interrupts();
 #endif
 
-  //save what was set
-  reg = REG_EEPROM_loc[reg];
-  save(reg,data_bytes[1]);  
-  save(reg+1,data_bytes[0]);  //int is little endian
 }
 
 inline
@@ -375,9 +281,6 @@ void AD_Chip::write_byte(byte reg, byte data){
   digitalWrite(AD_cs_pin, HIGH);
   interrupts();
 #endif
-  
-  reg = REG_EEPROM_loc[reg];
-  save(reg,data);  
   
 }
 
@@ -416,89 +319,5 @@ void AD_Chip::disable_irq(int irq){
   irq_enable &= irq; //clear the bit
   write_int(IRQEN, irq_enable);
 }
-
-inline
-void AD_Chip::write(byte *message, byte reg_size){
-  noInterrupts();
-   //find the eeprom location for this register to keep it up to date
-  byte eeprom_loc = REG_EEPROM_loc[message[0]];
-
-  // build the message to the communications register by marking bit 7 in reg to 1
-  message[0] |= 0x80;  //setting the send bit
-  
-  transfer(message[0], true);
-  save(eeprom_loc,message[1]);  //write to eeprom (here for built in delay we need)
-  transfer(message[1], true);
-  if(reg_size = 2){
-    transfer(message[2], false, false);
-    save(eeprom_loc+1,message[2]);
-  }
-  interrupts();
-}
-/*
-//message includes the register then space for data, but reg_size is just the size of the data
-void AD_Chip::read(byte* message, byte reg_size) {
-    // for read the message to communication register is just the register we want to talk to
-    // so we don't modify reg
-    // take the chip select low to select the device:
-    transfer(*message++, true); //Send register location
-    for(byte *top=message+reg_size; message<top; ++message){
-        *message = SPI.transfer(0x00, true);  //just read data back
-    }
-}
-*/
-inline
-byte AD_Chip::transfer(byte data, bool cont, bool delay){
-  //Serial.write(data);
-  static long last_time; 
-  byte rcv = 0;
-  //Serial.println(micros()-last_time);
-  if(delay){
-    last_time -= micros() - 4;
-    if(last_time > 0)
-      delayMicroseconds(last_time);
-  }
-#ifndef DUE
-  digitalWrite(AD_cs_pin, LOW);
-#endif
-  //take the chip select low to select the device:
-  
-#ifdef own_spi
-  byte clk = 0;
-  byte mask = 0x80; //start with MSB
-  for(byte i = 16; i>0; --i){
-      clk ^= 1;
-      if(clk){ //even numbers - when clock pulse is to be high
-          if(i != 16) //if not the first cycle, shift our mask
-              mask>>=1;
-          digitalWrite(SCK, HIGH);    //set the clock pulse
-          digitalWrite(MOSI, data&mask);   //write our data
-          //for our verifications
-      }
-      else{
-        if(digitalRead(MISO))  //read the data
-            rcv |= mask;
-          digitalWrite(SCK, LOW); //unset the clock pulse
-      }
-  }
-  
-#elif defined(DUE)  
-  if(cont)
-    rcv = SPI.transfer(AD_cs_pin, data, SPI_CONTINUE);
-  else
-    rcv = SPI.transfer(AD_cs_pin, data);
-#else // own_spi
-  rcv = SPI.transfer(data);
-#endif // own_spi
-
-#ifndef DUE
-  if(!cont)
-    digitalWrite(AD_cs_pin, HIGH);
-#endif // Due
-  //Serial.println("");
-  last_time = micros();
-  return rcv;
-}  
-
   
 #endif //AD_CHIP_H

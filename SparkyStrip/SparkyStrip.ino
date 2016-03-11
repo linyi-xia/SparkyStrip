@@ -6,8 +6,8 @@
 #include <SPI.h>
 
 // These two lines can be commented out to disable WIFI
-//#include "arduino_pi.h"
-//#define WIFI
+#include "arduino_pi.h"
+#define WIFI
 
 ////////////////////////// Global resourses /////////////////////////////////
 typedef void (*func_ptr)();
@@ -304,8 +304,8 @@ void send_update_v(){
         Serial.print('\n');
     }
 #ifdef WIFI
-    float wifi_package[10] = { 0,0,v60.amplitude(),v60.phase(),v180.amplitude(),v180.phase(),v300.amplitude(),v300.phase(),v420.amplitude(),v420.phase()};
-    write_data(wifi_package);
+    //float wifi_package[10] = { 0,0,v60.amplitude(),v60.phase(),v180.amplitude(),v180.phase(),v300.amplitude(),v300.phase(),v420.amplitude(),v420.phase()};
+    //write_data(wifi_package);
 #endif
 }
 
@@ -468,7 +468,7 @@ void process_mode_2(){
             i300.adjust_phase(phase_offset);
             i420.adjust_phase(phase_offset);
         }
-        send_all();
+        send_update_i();
         
         ++recalibrate_counter;
         if (recalibrate_counter == RECALIBRATE_CYCLES)
@@ -582,7 +582,7 @@ void setup() {
     AD.enable_irq(CYCEND);
     if(Serial)
         Serial.print("Ready to begin!\n");
-    run = nothing;
+    run = startup;
 }
 
 // the loop function runs over and over again forever
