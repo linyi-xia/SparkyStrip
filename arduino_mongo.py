@@ -10,8 +10,8 @@ from pymongo import MongoClient
 import struct
 
 DATA_LENGTH = 10
-MONGO_URI = 'mongodb://edmund:silver@ds045107.mongolab.com:45107/calplug_edmund'
-MONGO_DATABASE = 'calplug_edmund'
+MONO_URI = 'mongodb://sparkystrip:calplug123@ds011429.mlab.com:11429/sparkystrip'
+MONGO_DATABASE = 'sparkystrip'
 HOST = ''
 PORT = 12021
 
@@ -62,7 +62,7 @@ dirty_sock.listen(5)
 print('Waiting to accept connection...')
 connection, address = dirty_sock.accept()
 
-mongo_collection = mongo_db[str(address[0])]
+mongo_collection = mongo_db["TESTING_DATA"]
 
 def signal_handler(signal, frame):
 	print('Closing connection.')
