@@ -315,7 +315,7 @@ void send_update_i(){
     {
         Serial.print("\nCurrent Results:");
         Serial.print("\nPower: ");
-        Serial.print(active_power);
+        Serial.print(apparent_power);
         Serial.print(" Power_Factor: ");
         Serial.print(power_factor);
         Serial.print("\n60hz: ");
@@ -337,7 +337,7 @@ void send_update_i(){
         Serial.print('\n');
     }
 #ifdef WIFI
-    float wifi_package[10] = {active_power,power_factor,i60.real,i180.real,i300.real,i420.real,i60.imaginary,i180.imaginary,i300.imaginary,i420.imaginary};
+    float wifi_package[10] = {apparent_power,power_factor,i60.real,i180.real,i300.real,i420.real,i60.imaginary,i180.imaginary,i300.imaginary,i420.imaginary};
     write_data(wifi_package);
 #endif
 }
@@ -348,7 +348,7 @@ void send_all()
         {
               Serial.print(CURRENT_SAMPLE_RATE);
               Serial.print(' ');
-              Serial.print(active_power);
+              Serial.print(apparent_power);
               Serial.print(' ');
               Serial.print(power_factor);
               Serial.print(' ');
@@ -447,7 +447,7 @@ void process_mode_2(){
             else
                 power_factor = active_power/apparent_power;
                 
-            active_power *= power_scaler;
+            apparent_power *= power_scaler;
             int count = find_zero(data);
             if(count < 0)
             {
