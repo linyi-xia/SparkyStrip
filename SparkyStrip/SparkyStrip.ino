@@ -571,11 +571,13 @@ void setup() {
         Serial.print(" Port number:");
         Serial.println(PORTNO);
     }
+#ifndef USE_UDP
     while(!tcp_connect(IP, PORTNO))  //loop 
         if(Serial)
             Serial.print("Could not connect. Retrying...");
     Serial.print("Connected!\n"); 
-#endif    
+#endif //UDP
+#endif //WIFI
     PAST_DATA = data + MAX_SAMPLES;
 
     AD.setup();

@@ -38,7 +38,7 @@
 #define IRMS      0x16
 #define VRMS      0x17
 #define IRMSOS    0x18
-#define IRMSOS    0x19
+#define VRMSOS    0x19
 #define VAGAIN    0x1A
 #define VRMSOS    0x19
 #define VAGAIN    0x1A
