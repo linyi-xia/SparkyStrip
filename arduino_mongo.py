@@ -7,7 +7,7 @@ from pymongo import MongoClient
 import struct
 
 DATA_LENGTH = 10
-MONO_URI = 'mongodb://sparkystrip:calplug123@ds011429.mlab.com:11429/sparkystrip'
+MONGO_URI = 'mongodb://sparkystrip:calplug123@ds011429.mlab.com:11429/sparkystrip'
 MONGO_DATABASE = 'sparkystrip'
 HOST = ''
 PORT = 12021
