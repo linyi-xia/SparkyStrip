@@ -4,6 +4,7 @@ import numpy as np
 import mltools as ml
 import sys
 from pymongo import MongoClient
+import json, datetime
 
 MONGO_URI = 'mongodb://sparkystrip:calplug123@ds011429.mlab.com:11429/sparkystrip'
 MONGO_DATABASE = 'sparkystrip'
@@ -52,3 +53,11 @@ Y_predict = lr.predict(X_predict)
 with open('predict_Y', 'w') as pre_Y:
     for Y_i in Y_predict:
         pre_Y.write(str(int(round(Y_i[0]))) + '\n')
+
+with open('predict_Y', 'r') as pre_Y:
+    detect_count = []
+    for line in pre_Y:
+        detect_count.append(line.strip())
+    prediction = max(set(detect_count), key=detect_count.count)
+    mongo_collection = mongo_db["PREDICTIONS"]
+    mongo_collection.insert(json.loads(json.dumps([{"Device Name": prediction, 'Time':str(datetime.datetime.utcnow())}])))
