@@ -86,8 +86,11 @@ int phase_from_zero(float a)
 class Goerzel_result
 {
 public:
-    Goerzel_result(float Real = 0, float Imaginary = 0, float PhaseOffset = 0) : real(Real), imaginary(Imaginary), phase_offset(PhaseOffset) 
-    {}
+    Goerzel_result(float Real = 0, float Imaginary = 0, float PhaseOffset = 0) : real(Real), imaginary(Imaginary)
+    {
+    	if( PhaseOffset )
+    		adjust_phase(PhaseOffset);
+    }
     float amplitude()
     {
         return sqrtf(power());
@@ -100,7 +103,6 @@ public:
     {
         float my_phase = atan2f(imaginary, real);
         my_phase*=180/PI;
-        my_phase += phase_offset;
         //loops just for completeness, should never actually loop
         while(my_phase<0)
             my_phase += 360;
@@ -118,74 +120,21 @@ public:
         real /= divider;
         imaginary /= divider;
     }
-    void set_offset(float new_offset)
-    {
-       phase_offset = new_offset; 
-    }
-    float read_offset()
-    {
-        return phase_offset;
-    }
     void adjust_phase(float adjust_amount)
     {
-        phase_offset += adjust_amount;
+        float amp = amplitude();
+        float phase = atan2f(imaginary, real);
+        real = cosf(phase)*amp;
+        imaginary = sinf(phase)*amp;
     }
-//    void adjust_phase(float phase_dif)
-//    {
-//        phase += phase_dif;
-//        if (phase > 360)
-//            phase -= 360;
-//        if (phase < 0)
-//            phase += 360;
-//    }
-//    bool operator == (const Goerzel_result& other)
-//    {
-//        float ours = phase_from_zero(phase);
-//        float theirs = phase_from_zero(other.phase);
-//        if(amp*(1+THRESHOLD) < other.amp || amp*(1-THRESHOLD) > other.amp)
-//            return false;
-//        if(ours+PHASE_THRESHOLD < theirs || ours-PHASE_THRESHOLD > theirs)
-//            return false;
-//        return true;
-//    }
-//    bool operator != (const Goerzel_result& other)
-//    {
-//        return !(*this == other);
-//    }
-//    
-//    // these expect 60hz - for tracking the main component of the power
-//    void advance(int num_samples)
-//    {
-//        phase += num_samples*PHASE_ADV_PER_SAMPLE;
-//        phase = fmod(phase,360);
-//    }
-//    void operator ++ ()
-//    {
-//        phase += PHASE_ADV_PER_SAMPLE;
-//        phase = fmod(phase,360);
-//    }
-//    int advance_to_zero()
-//    {
-//        int count = samples_to_zero();
-//        advance(count);
-//        return count;
-//    }
-//    int samples_to_zero() const
-//    {
-//        if(phase < 7)
-//            return (360 - phase) / PHASE_ADV_PER_SAMPLE +.5;
-//        //TODO: fix this
-//        return 1;
-//    }
     void clear()
     {
         real = 0;
         imaginary = 0;
-        phase_offset = 0;
     }
     
-private:
-    float real, imaginary, phase_offset;
+public:
+    float real, imaginary;
 };
 
 //std::ostream& operator << (std::ostream& out, const Goerzel_result& gr)
@@ -257,7 +206,7 @@ private:
     float target_freq, a, b, c, d, coef, normalizer;
 };
 
-// version that adjusts n for to the sampe rate
+// version that adjusts n for to the sample rate
 class divider_process : public process_data
 {
 public:
