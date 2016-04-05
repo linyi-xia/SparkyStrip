@@ -20,9 +20,15 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 Adafruit_CC3000_Client pi_connection;
 
+struct wifi_package{
+  long long deviceID;
+  float data[10];
+};
+wifi_package package;
+
 const uint32_t DHCP_TIMEOUT = 300000;
 const bool STATUS_MESSAGES = true;
-const uint32_t DATA_LEN = 40;
+const uint32_t DATA_LEN = sizeof(wifi_package);
 //enter integer IP for the server
 
 // Forward declarations
@@ -32,6 +38,7 @@ void displayMACAddress(void);
 bool displayConnectionDetails(void);
 bool write_data(float data[]);
 void delay_loop(void);
+
 
 /*--------------------------------------
  * ---SETUP---
@@ -119,6 +126,7 @@ bool setup_cc3000()
     return false;
   }
 
+  cc3000.getMacAddress((uint8_t*)&package.deviceID);
   if(Serial)
   {
     displayMACAddress();
@@ -190,24 +198,26 @@ bool tcp_connect (uint32_t tcp_ip, uint16_t tcp_port)
 }
 
 
-bool write_data(float data[])
+bool write_data()
 {
 
 
   while (!cc3000.checkConnected())
   {
+    Serial.println("Reconnecting to internet");
     cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY);
   }
-  while(!pi_connection.connected() )
+  while(!pi_connection.connected() ){
+      Serial.println("Reconnecting to server");
  #ifdef USE_UDP
       pi_connection = cc3000.connectUDP(IP, PORTNO);
  #else   
       pi_connection = cc3000.connectTCP(IP, PORTNO);
  #endif
-      
-  pi_connection.write(data, DATA_LEN);
+  }
+  pi_connection.write(&package, DATA_LEN);
  #ifdef USE_UDP
-  pi_connection.close();
+  //pi_connection.close();
  #endif
   return true;
 }

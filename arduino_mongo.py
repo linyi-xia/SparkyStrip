@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-__author__ = 'edmund'
+__author__ = 'Jeffrey Thompson' #adapted from Edmunds script
 
-import signal
 import sys
 import socket
 import json
@@ -9,91 +8,74 @@ import datetime
 from pymongo import MongoClient
 import struct
 import subprocess
+import time
 
-DATA_LENGTH = 10
+STUCT_FORMAT= 'Q'+'f'*9
 MONGO_URI = 'mongodb://sparkystrip:calplug123@ds011429.mlab.com:11429/sparkystrip'
-MONGO_DATABASE = 'sparkystrip'
+MONGO_URI = 'mongodb://Dpynes:Pizzahead9@ds011860.mlab.com:11860/projectdp'
+MONGO_DATABASE = 'projectdp'
+MONGO_COLLECTION = 'rawData'
 HOST = ''
 PORT = 12021
-DEVICE_NAME = "TESTING_DEVICE"
 
-def parse_socket_data(socket_data) -> (int):
-    return struct.unpack('f'*DATA_LENGTH, socket_data)
 
-def json_encode(encode_data:[int], device_IP) -> json :
-
-    if encode_data[0] == encode_data[1] == 0 :
-        json_data = [{'Device IP': device_IP,
-                     'Time': str(datetime.datetime.utcnow()),
-                     'Type': 'Voltage',
-                     'Real': encode_data[2:6],
-                     'Imaginary': encode_data[6:],
-                     'Device Name': DEVICE_NAME}]
-    else :
-        json_data = [{'Device IP': device_IP,
-                      'Time': str(datetime.datetime.utcnow()),
-                      'Type': 'Current',
-                      'Real': encode_data[2:6],
-                      'Imaginary': encode_data[6:],
-                      'Power' : encode_data[0],
-                      'Power Factor' : encode_data[1],
-                      'Device Name': DEVICE_NAME}]
-    return json.dumps(json_data)
-    
-def save_data(encode_data:[int], device_IP, out_file) -> None:
-	out_file.write(device_IP[0] + ',' + str(datetime.datetime.utcnow()) + ',' + ','.join(str(x) for x in encode_data) +'\n')
-	out_file.flush()
-
+# funky function but works - edmunds work
 def return_int_ip() -> int :
     self_ip = [(s.connect(('8.8.8.8', 80)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
     return struct.unpack("!I", socket.inet_aton(self_ip))[0]
 
-if len(sys.argv) == 3:
-    TRAIN = True if sys.argv[1].strip() == "train" else False
-    DEVICE_NAME = sys.argv[2].strip()
-else:
-    print("Wrong number of arguments.")
-    sys.exit(2)
 
-print("IP FOR THIS DEVICE : ", return_int_ip())
-print("Port :",PORT);
-out_file = open('Local_Data.csv', 'a')
+######## start of script ########
+
+
 
 
 mongo_connect = MongoClient(MONGO_URI)
 mongo_db = mongo_connect[MONGO_DATABASE]
+mongo_collection = mongo_db[MONGO_COLLECTION]
 
-dirty_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-dirty_sock.bind((HOST, PORT))
+while True:
+    try:
+        dirty_sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        dirty_sock.bind((HOST, PORT))
+        break
+    except OSError:
+        print( 'killing old process hogging the port' )
+        subprocess.call( 'lsof -i :{} | grep -i "python" | cut -d " " -f3 | xargs kill -9'.format(PORT), shell=True )
+        time.sleep(1)
 
 
-mongo_collection = mongo_db[DEVICE_NAME]
+print("IP FOR THIS DEVICE : ", return_int_ip())
+print("Port :",PORT);
 
 
-def signal_handler(signal, frame):
-	print('Closing connections.')
-	out_file.close()
-	dirty_sock.close()
-	sys.exit(0)
-	
-signal.signal(signal.SIGINT, signal_handler)
+out_file = open('Local_Data.csv', 'a')
+out_file.write('timestamp, deviceID, Power, Power_Factor ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
 
-out_file.write('Device IP, Date, Power, Power_Factor ,Real60, Real180, Real300, Real420, Imm60, Imm180, Imm 300, Imm 420\n')
-
-for i in range(30 if TRAIN else 5) :
+while True:
     try :
-        raw_data, address = dirty_sock.recvfrom(1024)
-        usable_data = parse_socket_data(raw_data)
-        if usable_data == [float(0) for i in range(DATA_LENGTH)] :
+        
+        raw_data = dirty_sock.recv(1024)
+        
+        timestamp = str(datetime.datetime.utcnow())
+        
+        usable_data = struct.unpack(STUCT_FORMAT, raw_data)
+        if usable_data[0] == 0:
             break
-        json_dict = json.loads(json_encode(usable_data, address))
-        save_data(usable_data, address, out_file)
-        print('Inserting data : ', json_dict,'\n')
+        
+        json_dict = json.loads( [{'timestamp': timestamp,
+                                 'deviceID': usable_data[0],
+                                 'data' : usable_data[1:],
+                                 }] )
+        
+        pretty = timestamp + ',' + ','.join(str(x) for x in usable_data + '\n'
+        out_file.write(pretty)
+        out_file.flush()
+        
+        print('Inserting data : ', pretty)
         mongo_collection.insert(json_dict)
+
     except Exception as error:
         print('ERROR : ', str(error))
         continue
 
-out_file.close()
-dirty_sock.close()
-print("arduino_mongo ending after closing file and socket.")

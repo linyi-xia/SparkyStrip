@@ -8,7 +8,7 @@
 
 //Adjust these to scale values //
 const float power_ratio =  0.848;   //supposedly should be .848
-const float power_scaler = .32;  
+const float power_scaler = .27;  
 const int   min_power = 10;  
 
 
@@ -20,7 +20,7 @@ const int   min_power = 10;
 #define USE_UDP
 
 // IP address as and integer
-const unsigned long IP = 2850699055;
+const unsigned long IP = 2850717470;
 //enter port no for the server
 const int PORTNO = 12021;
 

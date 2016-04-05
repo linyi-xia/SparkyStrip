@@ -28,8 +28,10 @@ divider_process p300(300);
 divider_process p420(420);
 long  base_active_power = 0;
 float base_power_factor = 0;
-float power_factor, active_power;
+float power_factor, apparent_power;
 int first = 0;
+
+
 
 /////////////////////// Serial input processing ////////////////////////////
 
@@ -263,11 +265,7 @@ bool within_m(float a,float b,float threshold){
     return true;
 }
 
-bool power_changed(long ac_power, float pf){
-    if(within_m(ac_power, active_power, THRESHOLD) || within_m(pf, power_factor, THRESHOLD))
-        return true;
-    return false;
-}
+
 
 void dump_data()
 {
@@ -337,8 +335,17 @@ void send_update_i(){
         Serial.print('\n');
     }
 #ifdef WIFI
-    float wifi_package[10] = {apparent_power,power_factor,i60.real,i180.real,i300.real,i420.real,i60.imaginary,i180.imaginary,i300.imaginary,i420.imaginary};
-    write_data(wifi_package);
+    package.data[0] = apparent_power;
+    package.data[1] = power_factor;
+    package.data[2] = i60.real;
+    package.data[3] = i180.real;
+    package.data[4] = i300.real;
+    package.data[5] = i420.real;
+    package.data[6] = i60.imaginary;
+    package.data[7] = i180.imaginary;
+    package.data[8] = i300.imaginary;
+    package.data[9] = i420.imaginary;
+    write_data();
 #endif
 }
 
@@ -425,7 +432,7 @@ void process_mode_2(){
 
         float phase_offset = start_phase.phase();
         
-        active_power = AD.read_long(RAENERGY)*power_ratio;
+        float active_power = AD.read_long(RAENERGY)*power_ratio;
 //        if(active_power < min_power)
 //        {
 //            active_power = 0;
@@ -437,7 +444,7 @@ void process_mode_2(){
 //        }
 //        else
         {
-            long apparent_power = AD.read_long(RVAENERGY);
+            apparent_power = AD.read_long(RVAENERGY);
             if(apparent_power == 0)
             {
 //                reset_process();
@@ -460,9 +467,9 @@ void process_mode_2(){
             i300 = p300.process_all(data+count);
             i420 = p420.process_all(data+count);
             i60.adjust_phase(phase_offset);
-            i180.adjust_phase(phase_offset/3);
-            i300.adjust_phase(phase_offset/5);
-            i420.adjust_phase(phase_offset/7);
+            i180.adjust_phase(phase_offset);
+            i300.adjust_phase(phase_offset);
+            i420.adjust_phase(phase_offset);
         }
         if( first )
           first = 0;
