@@ -2,8 +2,6 @@
 # the device’s username will be u1234@x where 1234 is derived from the mac address
 
 
-
-
 DROP DATABASE SparkyStrip;
 
 CREATE DATABASE SparkyStrip;
@@ -26,6 +24,11 @@ CREATE TABLE Appliances(
 	PRIMARY KEY (appName)
 );
 
+CREATE TABLE AppUpdates(
+	updateNum INT
+);
+INSERT INTO AppUpdates(updateNum) 
+	VALUES(0);
 
 CREATE TABLE Devices(
 	devID INT, 
@@ -155,14 +158,14 @@ BEGIN
 	INSERT INTO RawData(devID, dateTime, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10)
 		VALUES(@DevID, _time, d_1, d_2, d_3, d_4, d_5, d_6, d_7, d_8, d_9, d_10);
 	
+	# get the dataID from the insertion
+	SELECT LAST_INSERT_ID() 
+		INTO data_ID;
+		
 	# update our activity tracking
 	UPDATE Devices 
 		SET lastPush = _time
 		WHERE devID = @DevID;
-	
-	# get the dataID from the insertion
-	SELECT LAST_INSERT_ID() 
-		INTO data_ID;
 		
 	# Find if we are training, and what the appliance name is
 	SELECT appName 
@@ -178,6 +181,8 @@ BEGIN
 			VALUES (data_ID);
 	ELSE
 		# training, so lets handle it here
+		INSERT INTO DeviceHistory(dataID,appName) VALUES(data_ID,app_name);
+		
 		# get the count so far
 		SELECT trainCount 
 			FROM Appliances 
@@ -205,6 +210,9 @@ BEGIN
 			UPDATE Devices 
 				SET appName = NULL
 				WHERE devID = @DevID;
+			# up our update count
+			UPDATE AppUpdates
+				SET updateNum = updateNum + 1;
 		END IF;			
 		
 	END IF;
@@ -216,7 +224,7 @@ DELIMITER ;
 DELIMITER $$
 CREATE PROCEDURE getUnprocessed()
 BEGIN
-	DECLARE data_ID, dev_ID, train_count INT;
+	DECLARE data_ID, dev_ID, train_count, update_num INT;
 	# get 1 dataID (oldest by the way it’s structured)
 	SELECT dataID
 		FROM Unprocessed 
@@ -229,14 +237,13 @@ BEGIN
 		WHERE dataID = data_ID;
 	
 	# return the relevant info
-	SELECT dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10 
-		FROM RawData 
+	SELECT dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, updateNum 
+		FROM RawData, AppUpdates
 		WHERE dataID = data_ID;
 END$$
 DELIMITER ;
 
 	
-
 # used by the app to get the history of a device - with a limit (1 returns just most recent)
 DELIMITER $$
 CREATE PROCEDURE getHistory(
@@ -250,6 +257,7 @@ BEGIN
 		SELECT dateTime, appName, d1 as power 
 			FROM (SELECT * FROM RawData WHERE devID = deviceID) as temp1
 				NATURAL JOIN DeviceHistory
+			ORDER BY dateTime DESC
 			LIMIT histLimit;
 	END IF;
 END$$
@@ -269,6 +277,11 @@ BEGIN
 			DELETE 
 				FROM Appliances 
 				WHERE appName = applianceName;
+			IF ROW_COUNT() != 0 THEN
+				# we deleted an appliance so up our update count
+				UPDATE AppUpdates
+					SET updateNum = updateNum + 1;
+			END IF;
 			INSERT 
 				INTO Appliances(appName) 
 					VALUES(applianceName);
@@ -295,68 +308,49 @@ END$$
 DELIMITER ;
 
 
-######  testing data - run as user u123 which has all privileges #######
 
-CALL setDevID();
-INSERT INTO Devices(devID, lastStateChange) VALUES(123, NOW());
-INSERT INTO UserDevices(userID, devID) VALUES(@username, @devID);
+### Create initial users
 
+DROP USER 'u123'@'%';
+CREATE USER 'u123'@'%' 
+	IDENTIFIED BY 'sparkystrip_device';
+GRANT 
+	EXECUTE ON PROCEDURE SparkyStrip.pushData 
+	TO 'u123'@'%';
 
-CALL setTraining(123,'Nothing');
+DROP USER 'Dpynes'@'%';	
+CREATE USER 'Dpynes'@'%' 
+	IDENTIFIED BY 'Pizzahead9';
+GRANT 
+	EXECUTE ON PROCEDURE SparkyStrip.setTraining
+	TO 'Dpynes'@'%';
+GRANT 
+	EXECUTE ON PROCEDURE SparkyStrip.viewDevices 
+	TO 'Dpynes'@'%';
+GRANT 
+	EXECUTE ON PROCEDURE SparkyStrip.getHistory
+	TO 'Dpynes'@'%';
 
-call pushData(-5,-5,-5,-5,-5,-5,-5,-5,-5,-5);
-call pushData(-4,-4,-4,-4,-4,-4,-4,-4,-4,-4);
-call pushData(-3,-3,-3,-3,-3,-3,-3,-3,-3,-3);
-call pushData(-2,-2,-2,-2,-2,-2,-2,-2,-2,-2);
-call pushData(0,0,0,0,0,0,0,0,0,0);
-call pushData(2,2,2,2,2,2,2,2,2,2);
-call pushData(3,3,3,3,3,3,3,3,3,3);
-call pushData(4,4,4,4,4,4,4,4,4,4);
-call pushData(5,5,5,5,5,5,5,5,5,5);
-call pushData(0,0,0,0,0,0,0,0,0,0);
-call pushData(0,0,0,0,0,0,0,0,0,0);
-call pushData(0,0,0,0,0,0,0,0,0,0);
-call pushData(0,0,0,0,0,0,0,0,0,0);
-call pushData(0,0,0,0,0,0,0,0,0,0);
-call pushData(0,0,0,0,0,0,0,0,0,0);
+INSERT INTO Devices(devID, lastStateChange) 
+	VALUES(123, NOW());
+INSERT INTO UserDevices(userID, devID) 
+	VALUES('Dpynes', 123);
+	
+DROP USER 'sparkyID'@'localhost';	
+CREATE USER 'sparkyID'@'localhost' 
+	IDENTIFIED BY 'squidsofpink';
+GRANT 
+	EXECUTE ON PROCEDURE SparkyStrip.getUnprocessed
+	TO 'sparkyID'@'localhost';
+GRANT 
+	INSERT ON SparkyStrip.DeviceHistory 
+	TO 'sparkyID'@'localhost';
+GRANT 
+	SELECT ON SparkyStrip.Appliances 
+	TO 'sparkyID'@'localhost';
+GRANT 
+	SELECT ON SparkyStrip.AppUpdates 
+	TO 'sparkyID'@'localhost';
 
-call pushData(0,0,0,0,0,0,0,0,0,0);
-
-
-CALL setTraining(123,'Monitor');
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-call pushData(10,10,10,10,10,10,10,10,10,10);
-
-call pushData(10,10,10,10,10,10,10,10,10,10);
-
-
-select * from rawData;
-select * from Unprocessed;
-
-call getUnprocessed();
-INSERT INTO DeviceHistory(dataID,appName) VALUES(16,'Nothing');
-call getUnprocessed();
-INSERT INTO DeviceHistory(dataID,appName) VALUES(32,'Monitor');
-
-select * from Unprocessed;
-
-select * from Appliances;
-
-# testing webapp side
-CALL getHistory(123, 1);
-CALL getHistory(123, 100);
 
 
