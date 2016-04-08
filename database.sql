@@ -2,7 +2,7 @@
 # the device’s username will be u1234@x where 1234 is derived from the mac address
 
 
-DROP DATABASE SparkyStrip;
+DROP DATABASE IF EXISTS SparkyStrip;
 
 CREATE DATABASE SparkyStrip;
 
@@ -311,14 +311,14 @@ DELIMITER ;
 
 ### Create initial users
 
-DROP USER 'u123'@'%';
+DROP USER IF EXISTS 'u123'@'%';
 CREATE USER 'u123'@'%' 
 	IDENTIFIED BY 'sparkystrip_device';
 GRANT 
 	EXECUTE ON PROCEDURE SparkyStrip.pushData 
 	TO 'u123'@'%';
 
-DROP USER 'Dpynes'@'%';	
+DROP USER IF EXISTS 'Dpynes'@'%';	
 CREATE USER 'Dpynes'@'%' 
 	IDENTIFIED BY 'Pizzahead9';
 GRANT 
@@ -336,18 +336,18 @@ INSERT INTO Devices(devID, lastStateChange)
 INSERT INTO UserDevices(userID, devID) 
 	VALUES('Dpynes', 123);
 	
-DROP USER 'sparkyID'@'%';	
+DROP USER IF EXISTS 'sparkyID'@'%' ;
 CREATE USER 'sparkyID'@'%' 
 	IDENTIFIED BY 'squidsofpink';
 GRANT 
 	EXECUTE ON PROCEDURE SparkyStrip.getUnprocessed
-	TO 'sparkyID'@'localhost';
+	TO 'sparkyID'@'%';
 GRANT 
 	INSERT ON SparkyStrip.DeviceHistory 
-	TO 'sparkyID'@'localhost';
+	TO 'sparkyID'@'%';
 GRANT 
 	SELECT ON SparkyStrip.Appliances 
-	TO 'sparkyID'@'localhost';
+	TO 'sparkyID'@'%';
 
 
 

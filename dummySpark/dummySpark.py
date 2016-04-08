@@ -17,7 +17,7 @@ input("Connected!\nPress Enter to start the first dataset")
 for line in input_file:
 	line = line.rstrip()
 	if line == '':
-		input("Dataset finished, press enter to continue")
+		input("Dataset finished, press Enter to continue")
 	else:
 		time.sleep(1)
 		cursor = db.cursor()
