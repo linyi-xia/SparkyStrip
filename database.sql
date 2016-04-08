@@ -237,7 +237,7 @@ BEGIN
 		WHERE dataID = data_ID;
 	
 	# return the relevant info
-	SELECT dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, updateNum 
+	SELECT updateNum, dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10 
 		FROM RawData, AppUpdates
 		WHERE dataID = data_ID;
 END$$
@@ -336,8 +336,8 @@ INSERT INTO Devices(devID, lastStateChange)
 INSERT INTO UserDevices(userID, devID) 
 	VALUES('Dpynes', 123);
 	
-DROP USER 'sparkyID'@'localhost';	
-CREATE USER 'sparkyID'@'localhost' 
+DROP USER 'sparkyID'@'%';	
+CREATE USER 'sparkyID'@'%' 
 	IDENTIFIED BY 'squidsofpink';
 GRANT 
 	EXECUTE ON PROCEDURE SparkyStrip.getUnprocessed
@@ -347,9 +347,6 @@ GRANT
 	TO 'sparkyID'@'localhost';
 GRANT 
 	SELECT ON SparkyStrip.Appliances 
-	TO 'sparkyID'@'localhost';
-GRANT 
-	SELECT ON SparkyStrip.AppUpdates 
 	TO 'sparkyID'@'localhost';
 
 

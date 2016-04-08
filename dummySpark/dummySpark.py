@@ -7,7 +7,8 @@ Created on Apr 7, 2016
 
 
 import MySQLdb, time
-
+# apt-get install python-dev libmysqlclient-dev
+# pip3 install mysqlclient
 
 input_file = open("dummy_data.csv")
 db = MySQLdb.connect("localhost","u123","sparkystrip_device","SparkyStrip" )
@@ -20,7 +21,7 @@ for line in input_file:
 	else:
 		time.sleep(1)
 		cursor = db.cursor()
-		cursor.execute( 'CALL SparkyStrip.PushData({});'.format(line) )
+		cursor.execute( 'CALL PushData({});'.format(line) )
 		db.commit()
 		print('Pushing:',line)
     
