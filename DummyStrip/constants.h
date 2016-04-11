@@ -67,19 +67,7 @@
 
 ////////////////////////////// Constants ////////////////////////////////////
 
-// # of bytes for each register
-const byte REG_bytes[] =
-//         5         A         F           14           19             1E            23     27
-{0,3,3,3,3,3,3,3,0,2,2,2,2,1,1,1,1,2, 2,1, 2 ,2 ,3,3, 2, 2, 2,1 ,2 , 2,1 , 1, 1, 1,3,3 ,3,3,1,2};
 
-// type of each register
-
-
-// EEPROM location storing values for writable registers - 0 indicates not writeable
-// note that any odd sized register data size (eg: 6 or 12 bits) must be stored with the data to the MSB end
-const byte REG_EEPROM_loc[] =
-//         5         A         F           14           19             1E            23     27
-{0,0,0,0,0,0,0,0,0,1,3,0,0,5,6,7,8,9,11,13,14,16,0,0,18,20,22,24,25,27,29,30,31,32,0,0 ,0,0,0,0};
 
 ///////////////////////// Default register values /////////////////////////////
 

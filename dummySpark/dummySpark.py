@@ -7,11 +7,12 @@ Created on Apr 7, 2016
 
 
 import MySQLdb, time
-# apt-get install python-dev libmysqlclient-dev
+# sudo apt-get install python-dev libmysqlclient-dev
+# sudo apt-get install python3-pip
 # pip3 install mysqlclient
 
 input_file = open("dummy_data.csv")
-db = MySQLdb.connect("localhost","u123","sparkystrip_device","SparkyStrip" )
+db = MySQLdb.connect("72.219.144.187","u123","sparkystrip_device","SparkyStrip" )
 
 input("Connected!\nPress Enter to start the first dataset")
 for line in input_file:

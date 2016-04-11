@@ -1,3 +1,5 @@
+
+
 #include "settings.h"
 
 #define WIFI
@@ -8,28 +10,11 @@ void setup() {
       Serial.begin(115200);  
 #ifdef WIFI
     while(!setup_cc3000());  //loop until it connects to wifi
-    if(Serial)
-    {
-        Serial.print("Connecting to IP:");
-        Serial.print(IP);
-        Serial.print(" Port number:");
-        Serial.println(PORTNO);
-    }
-    while(!tcp_connect(IP, PORTNO))  //loop 
-        if(Serial)
-            Serial.print("Could not connect. Retrying...");
-    if(Serial)
-      Serial.print("Connected!\n"); 
+
+    while(!mysql_connect());  //loop 
 #endif    
 }
 
-void serialEvent() {
-  while(Serial.available()){
-        byte new_data = Serial.read();
-        Serial.print(new_data);
-        //do something with the serial data
-  }
-}
 
 
 
@@ -60,11 +45,6 @@ float wifi_package[16][10] = {
 void loop() {
   static int i;
   delay(2000);
-  if(Serial){
-      Serial.print("Sending data package ");
-      Serial.print(i);
-      Serial.print(" over Wifi!\n"); 
-  }
-  write_data(wifi_package[i]);
+  send_mysql(wifi_package[i]);
   i = (i+1)&15;
 }

@@ -7,6 +7,11 @@
 #include <SPI.h>
 #include "utility/debug.h"
 
+#include <MySQL_Connection.h>
+#include <MySQL_Cursor.h>
+#include <MySQL_Encrypt_Sha1.h>
+#include <MySQL_Packet.h>
+
 //The stuff down there needs to be global
 
 // These are the interrupt and control pins
@@ -19,6 +24,17 @@
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 Adafruit_CC3000_Client pi_connection;
+
+
+const unsigned long IP = 2850738576;
+IPAddress server_addr(72,219,144,187);  // IP of the MySQL *server* here
+char user[] = "u123";                   // MySQL user login username
+char password[] = "sparkystrip_device";        // MySQL user login password
+
+Adafruit_CC3000_Client client;        // For WiFi connections
+MySQL_Connection conn((Client *)&client);
+MySQL_Cursor *cursor;
+
 
 const uint32_t DHCP_TIMEOUT = 300000;
 const bool STATUS_MESSAGES = true;
@@ -96,40 +112,7 @@ void delay_loop(void)
 
 bool setup_cc3000()
 {
-  if(Serial)
-  {
-    displayDriverMode();
-    Serial.print("Free RAM: "); Serial.println(getFreeRam(), DEC);
-    Serial.println(F("Initialising the CC3000 ..."));
-  }
-
-  if (!cc3000.begin())
-  {
-    if(Serial)
-      Serial.println(F("Unable to initialise the CC3000! Check your wiring?"));
-    //while(1);
-    return false;
-  }
-
-  uint16_t firmware = checkFirmwareVersion();
-  if (firmware < 0x113) {
-    if(Serial)
-      Serial.println(F("Wrong firmware version!"));
-    //for(;;);
-    return false;
-  }
-
-  if(Serial)
-  {
-    displayMACAddress();
-    Serial.println(F("Deleting old connection profiles"));
-  }
-  if (!cc3000.deleteProfiles()) {
-    if(Serial)
-      Serial.println(F("Failed!"));
-    //while(1);
-    return false;
-  }
+  cc3000.begin();
 
   /* Attempt to connect to an access point */
   char *ssid = WLAN_SSID;             /* Max 32 chars */
@@ -157,27 +140,61 @@ bool setup_cc3000()
   while (!cc3000.checkDHCP())
   {
     delay(100); // ToDo: Insert a DHCP timeout!
+    if(Serial)
+    {
+      Serial.println(F("Trying again..."));
+    }
     DHCP_time += 100;
     if (DHCP_time >= DHCP_TIMEOUT)
       return false;
-  }
-
-  if (Serial)
-  {
-    while (! displayConnectionDetails()) {
-      delay(1000);
-    }
-    Serial.println(F("IP to connect to : "));
-    cc3000.printIPdotsRev(IP);
-    Serial.println();
   }
 
   if (cc3000.checkConnected())
   {
     if(Serial)
       Serial.println(F("Succesfully connected to internet."));
+    
     return true;
   }
+}
+
+
+bool mysql_connect() 
+{
+  if(!cc3000.checkConnected())
+    setup_cc3000();
+  if(Serial)
+    Serial.println("Connecting my MySQL server");
+  if (conn.connect(server_addr, 3306, user, password)) {
+    delay(1000);
+    // Initiate the query class instance
+    if(Serial)
+      Serial.println("Connected!");
+    cursor= new MySQL_Cursor(&conn);
+    if(Serial)
+      Serial.println("Cursor made!");
+    return true;
+  }
+  else if(Serial)
+    Serial.println("Connection failed.");
+  return false;
+}
+
+bool send_mysql(float data[])
+{
+    char call[256];
+    const char call_template[]= "CALL SparkyStrip.pushData(%f,%f,%f,%f,%f,%f,%f,%f,%f,%f);";
+    sprintf(call, call_template, data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9]);
+    // Execute the call
+    while(!conn.connected()){
+      conn.close();
+      mysql_connect();
+    }
+    cursor->execute(call);
+    if(Serial){
+      Serial.println(call);
+      Serial.println("Data recorded.");
+    }
 }
 
 bool tcp_connect (uint32_t tcp_ip, uint16_t tcp_port)
@@ -189,31 +206,8 @@ bool tcp_connect (uint32_t tcp_ip, uint16_t tcp_port)
     return false;
 }
 
-void write_random_data(uint16_t iterations)
-{
-  randomSeed(analogRead(0));
-  for (uint16_t i = 0; i < iterations; i++)
-  {
-    float random_string1[] = {random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000),};
-    float random_string2[] = {0, 0, random(1, 1000000), random(1, 1000000),random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000), random(1, 1000000),};
-    Serial.println(F("Writing data."));
-    if(!write_data(random_string1))
-    {
-      Serial.println(F("Error writing random data."));
-      break;
-    }
-    Serial.println(F("Data written."));
-    delay_loop();
-    Serial.println(F("Writing data."));
-    if(!write_data(random_string2))
-    {
-      Serial.println(F("Error writing random data."));
-      break;
-    }
-    Serial.println(F("Data written."));
-    delay_loop();
-  }
-}
+
+
 
 bool write_data(float data[])
 {

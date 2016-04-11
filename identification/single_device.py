@@ -7,8 +7,8 @@ Created on Apr 7, 2016
 
 
 import MySQLdb, time
-# apt-get install python-dev libmysqlclient-dev
-# apt-get install pip3
+# sudo apt-get install python-dev libmysqlclient-dev
+# sudo apt-get install python3-pip
 # pip3 install mysqlclient
 
 #def print(*args):

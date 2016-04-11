@@ -273,6 +273,9 @@ BEGIN
 	IF checkDeviceID(deviceID) IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERROR: Device not associated with user!';
 	ELSE
+		If applianceName = '' THEN
+			SET applianceName = NULL;
+		END IF;
 		IF applianceName IS NOT NULL THEN
 			DELETE 
 				FROM Appliances 
