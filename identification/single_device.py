@@ -36,7 +36,6 @@ while True:
 				print('\npulling data')
 				updateNum, dataID, *data = cursor.fetchone()
 				print('Recieved:', updateNum,dataID,data)
-				out_file.write(
 				if updateNum != myUpdateNum:
 					print('updating appliance stats')
 					cursor.execute( 'SELECT * FROM Appliances;' )
