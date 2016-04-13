@@ -19,7 +19,6 @@ CREATE TABLE Appliances(
 	d7 FLOAT DEFAULT 0,
 	d8 FLOAT DEFAULT 0,
 	d9 FLOAT DEFAULT 0,
-	d10 FLOAT DEFAULT 0,
 	trainCount INT DEFAULT 0,
 	PRIMARY KEY (appName)
 );
@@ -52,7 +51,6 @@ CREATE TABLE RawData(
 	d7 FLOAT NOT NULL,
 	d8 FLOAT NOT NULL,
 	d9 FLOAT NOT NULL,
-	d10 FLOAT NOT NULL,
 	PRIMARY KEY (dataID),
 	FOREIGN KEY(devID) REFERENCES Devices(devID) ON DELETE CASCADE
 );
@@ -140,8 +138,7 @@ CREATE PROCEDURE pushData(
 	IN d_6 FLOAT,
 	IN d_7 FLOAT,
 	IN d_8 FLOAT,
-	IN d_9 FLOAT,
-	IN d_10 FLOAT)
+	IN d_9 FLOAT)
 BEGIN
 	DECLARE _time TIME;
 	DECLARE data_ID, train_count, next_count, i INT;
@@ -155,8 +152,8 @@ BEGIN
 	END IF;
 	
 	# Insert the data
-	INSERT INTO RawData(devID, dateTime, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10)
-		VALUES(@DevID, _time, d_1, d_2, d_3, d_4, d_5, d_6, d_7, d_8, d_9, d_10);
+	INSERT INTO RawData(devID, dateTime, d1, d2, d3, d4, d5, d6, d7, d8, d9)
+		VALUES(@DevID, _time, d_1, d_2, d_3, d_4, d_5, d_6, d_7, d_8, d_9);
 	
 	# get the dataID from the insertion
 	SELECT LAST_INSERT_ID() 
@@ -201,7 +198,6 @@ BEGIN
 				d7 = (d7 * train_count + d_7) /next_count,
 				d8 = (d8 * train_count + d_8) /next_count,
 				d9 = (d9 * train_count + d_9) /next_count,
-				d10 = (d10 * train_count + d_10) /next_count,
 				trainCount = next_count
 			WHERE appName = app_name;
 			
@@ -237,7 +233,7 @@ BEGIN
 		WHERE dataID = data_ID;
 	
 	# return the relevant info
-	SELECT updateNum, dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10 
+	SELECT updateNum, dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9
 		FROM RawData, AppUpdates
 		WHERE dataID = data_ID;
 END$$
@@ -314,12 +310,19 @@ DELIMITER ;
 
 ### Create initial users
 
-DROP USER 'u123'@'%';
-CREATE USER 'u123'@'%' 
-	IDENTIFIED BY 'sparkystrip_device';
+DROP USER 'sparkyID'@'%' ;
+CREATE USER 'sparkyID'@'%' 
+	IDENTIFIED BY 'squidsofpink';
 GRANT 
-	EXECUTE ON PROCEDURE SparkyStrip.pushData 
-	TO 'u123'@'%';
+	EXECUTE ON PROCEDURE SparkyStrip.getUnprocessed
+	TO 'sparkyID'@'%';
+GRANT 
+	INSERT ON SparkyStrip.DeviceHistory 
+	TO 'sparkyID'@'%';
+GRANT 
+	SELECT ON SparkyStrip.Appliances 
+	TO 'sparkyID'@'%';
+
 
 DROP USER 'Dpynes'@'%';	
 CREATE USER 'Dpynes'@'%' 
@@ -334,23 +337,32 @@ GRANT
 	EXECUTE ON PROCEDURE SparkyStrip.getHistory
 	TO 'Dpynes'@'%';
 
+# dummy device
+DROP USER 'u123'@'%';
+CREATE USER 'u123'@'%' 
+	IDENTIFIED BY 'sparkystrip_device';
+GRANT 
+	EXECUTE ON PROCEDURE SparkyStrip.pushData 
+	TO 'u123'@'%';
+
 INSERT INTO Devices(devID, lastStateChange) 
 	VALUES(123, NOW());
 INSERT INTO UserDevices(userID, devID) 
 	VALUES('Dpynes', 123);
 	
-DROP USER 'sparkyID'@'%' ;
-CREATE USER 'sparkyID'@'%' 
-	IDENTIFIED BY 'squidsofpink';
+# actual device	
+DROP USER 'd11262'@'%';
+CREATE USER 'd11262'@'%' 
+	IDENTIFIED BY 'sparkystrip_device';
 GRANT 
-	EXECUTE ON PROCEDURE SparkyStrip.getUnprocessed
-	TO 'sparkyID'@'%';
-GRANT 
-	INSERT ON SparkyStrip.DeviceHistory 
-	TO 'sparkyID'@'%';
-GRANT 
-	SELECT ON SparkyStrip.Appliances 
-	TO 'sparkyID'@'%';
+	EXECUTE ON PROCEDURE SparkyStrip.pushData 
+	TO 'd11262'@'%';
+
+INSERT INTO Devices(devID, lastStateChange) 
+	VALUES(11262, NOW());
+INSERT INTO UserDevices(userID, devID) 
+	VALUES('Dpynes', 11262);
+	
 
 
 

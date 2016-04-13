@@ -7,7 +7,7 @@
 typedef void (*func_ptr)();
 
 AD_Chip AD;  //instance of the class that handles the AD chip
-func_ptr run;
+int run = 1;
 
 /////////////////////// Serial input processing ////////////////////////////
 
@@ -23,37 +23,25 @@ void serialEvent() {
             case get_reg:
             {
                 if(new_data == 0x00){
-                    if( run == nothing )
-                      Serial.println("Standby");
-                    else
-                      Serial.println("Running");
+                    run = 0;
+                    return;
                 }
                 if(new_data == 0x01){
-                    long l_data = AD.read_waveform();
-                    byte* access = (byte*)&l_data;
-                    Serial.write(access[2]);  //reverse endian order
-                    Serial.write(access[1]);
-                    Serial.write(access[0]);
+                    run = 2;
                     return;
                 }
                 if(new_data == 0xAA){
                     AD.write_byte(CH1OS,0x00);
                     AD.write_byte(CH1OS,ch1os);
-                    if( run != nothing ){
-                      Serial.println("Going to idle mode");
-                      run = nothing;
-                    }
-                    else{
-                      run = sample_current;
-                    }
+                    run^=1;
                     return;
                 }
                 if(new_data == 0xAB){
-                    run = sample_voltage;
+                    sample_voltage();
                     return;
                 }
                 if(new_data == 0xAC){
-                    run = sample_current;
+                    sample_current();
                     return;
                 }
                 reg = new_data & 0x7F; //save it without the write bit set
@@ -134,38 +122,15 @@ void serialEvent() {
 ////////////////////////////// working area  /////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-void nothing(){}
-
-
-void sample_voltage(){
-    Serial.println("Voltage:");
-    AD.write_int(MODE, vMode);  // sample voltage on ADC1
-    AD.read_long(RAENERGY);
-    AD.read_long(RVAENERGY);
-    run = dump;
-}
 
 void sample_current(){
-    Serial.println("Current:");
-    AD.write_int(MODE, iMode);  // sample voltage on ADC1
-    AD.read_long(RAENERGY);
-    AD.read_long(RVAENERGY);
-    run = dump;
+  AD.write_int(MODE, iMode);  // sample current on ADC1
+  run = 2;
 }
 
-void dump(){
-    
-    if(!AD.read_irq())
-        return;
-    if(!AD.irq_set(WSMP))
-        return;
-    long sample = AD.read_waveform();
-    long active = AD.read_long(AENERGY);
-    long apparent = AD.read_long(VAENERGY);
-    Serial.write(0xAA);
-    Serial.write(sample);
-    Serial.write(active);
-    Serial.write(apparent);
+void sample_voltage(){
+  AD.write_int(MODE, vMode);  // sample voltage on ADC1
+  run = 2;
 }
 
 ////////////////////////////// Main Functions /////////////////////////////
@@ -175,23 +140,40 @@ void dump(){
 //the setup function runs once when reset button pressed, board powered on, or serial connection
 void setup() {
     Serial.begin(115200);  
-    if(Serial)
-      Serial.println("Booting!");
- 
     AD.setup();
-    
+
+    delay(2000);
+    AD.write_int(MODE, iMode);  // sample current on ADC1
     AD.write_int(LINECYC, lineCyc); // make line-cycle accumulation produce power readings
     AD.write_byte(CH1OS, ch1os);    // integrator setting
     AD.write_byte(GAIN, gain);      // gain adjust
-    AD.enable_irq(WSMP);
-    AD.enable_irq(CYCEND);
-    if(Serial)
-        Serial.print("Ready to begin!\n");
-    run = nothing;
+    
+    AD.enable_irq(WSMP);    //New data is present in the waveform register.
+    AD.enable_irq(CYCEND);  //End of energy accumulation over an integral number of half line cycles.
+    AD.enable_irq(ZX);      //rising and falling edge of the voltage waveform.
+    AD.enable_irq(PNEG);    //power has gone from positive to negative.
+    AD.enable_irq(PPOS);
+    run = 2;
 }
 
 // the loop function runs over and over again forever
 void loop(){
-    run();
+  uint32_t data;
+  if(run != 1){
+    if(run == 0)
+      return;
+    delay(1000);
+    Serial.print("DDDD"); 
+    run = 1;
+  }
+  AD.read_irq()
+  uint8_t irq_compress = (AD.irq_status>>PPOS) | (AD.irq_status & 0x1c);
+  if(!irq_compress)
+    return;
+  Serial.write(irq_compress);
+  if(AD.irq_set(WSMP)){
+    data = AD.read_waveform();
+    Serial.write((char*)&data,3);
+  }
 }
 

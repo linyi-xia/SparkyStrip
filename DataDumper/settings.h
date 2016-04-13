@@ -2,25 +2,34 @@
 #define SETTINGS_H
 
 #include "Arduino.h"
+#include <IPAddress.h>
 #include "constants.h"
 #define PI 3.1415926535897932384626433832795
 /////////////////////// Settings ////////////////////////////
 
 //Adjust these to scale values //
-const float power_ratio =  0.83;   //supposedly should be .848
-const float power_scaler = .19;  
+const float power_ratio =  0.848;   //supposedly should be .848
+const float power_scaler = .27;  
 const int   min_power = 10;  
 
-
-#define WLAN_SSID       "Newberry"        // cannot be longer than 32 characters!
-#define WLAN_PASS       "Friend01"
+/*
+#define WLAN_SSID       "UCInet Mobile Access"        // cannot be longer than 32 characters!
+#define WLAN_PASS       ""
+// Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
+#define WLAN_SECURITY   WLAN_SEC_UNSEC
+*/
+#define WLAN_SSID       "JeffnTahe"        // cannot be longer than 32 characters!
+#define WLAN_PASS       "1loveTahereh!"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
 #define WLAN_SECURITY   WLAN_SEC_WPA2
 
-// IP address as and integer
-const long IP = 3232235918;
-//enter port no for the server
-const int PORTNO = 12015;
+//IPAddress server_addr(72,219,144,187);  // IP of the MySQL *server* here
+IPAddress server_addr(169,234,209,144);
+
+char user[12];                          // MySQL user login username generated from mac address
+char password[] = "sparkystrip_device"; // MySQL user login password
+
+
 
 #define INTEGRATOR
 
@@ -67,6 +76,12 @@ const int NYQUIST = SAMPLE_RATE/2;
 const int PERIODS_SAMPLED      = MAX_SAMPLES/SAMPLES_PER_PERIOD;
 const int TIME_BETWEEN_SAMPLES = 1000000/SAMPLE_RATE; //in us
 
+/// trying fixed point stuff ///s
+const int BITSPERCYCLE = 16;
+const int Q_INT = pow(2,BITSPERCYCLE);
+const float Q_FLOAT = Q_INT;
+const int BITSPERQUARTER = BITSPERCYCLE-2;
+const float A_DFT_CONST = Q_FLOAT/((float)AD_CLOCK/SAMPLING_DIV);
 
 const int lineCyc = 12;  // 6 cycles so there are 10 'segments' per second.  
 

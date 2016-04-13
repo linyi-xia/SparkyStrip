@@ -14,6 +14,12 @@ import MySQLdb, time
 #def print(*args):
 #	pass
 
+'''
+out_file = open('Local_Data.csv', 'a')
+if out_file.tell() = 0:
+	# if the file is empty write the header
+	out_file.write('timestamp, dataID, Power, data...\n')
+'''
 
 myUpdateNum = 0
 apps = tuple()
@@ -30,6 +36,7 @@ while True:
 				print('\npulling data')
 				updateNum, dataID, *data = cursor.fetchone()
 				print('Recieved:', updateNum,dataID,data)
+				out_file.write(
 				if updateNum != myUpdateNum:
 					print('updating appliance stats')
 					cursor.execute( 'SELECT * FROM Appliances;' )

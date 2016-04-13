@@ -6,8 +6,8 @@
 #include <SPI.h>
 
 // These two lines can be commented out to disable WIFI
-#include "arduino_pi.h"
 #define WIFI
+#include "arduino_mysql.h"
 
 ////////////////////////// Global resourses /////////////////////////////////
 typedef void (*func_ptr)();
@@ -28,7 +28,7 @@ divider_process p300(300);
 divider_process p420(420);
 long  base_active_power = 0;
 float base_power_factor = 0;
-float power_factor, apparent_power;
+float active_power, power_factor, apparent_power;
 int first = 0;
 
 
@@ -312,8 +312,8 @@ void send_update_i(){
     if(Serial)
     {
         Serial.print("\nCurrent Results:");
-        Serial.print("\nPower: ");
-        Serial.print(apparent_power);
+        Serial.print("\nActive Power: ");
+        Serial.print(active_power);
         Serial.print(" Power_Factor: ");
         Serial.print(power_factor);
         Serial.print("\n60hz: ");
@@ -335,17 +335,8 @@ void send_update_i(){
         Serial.print('\n');
     }
 #ifdef WIFI
-    package.data[0] = apparent_power;
-    package.data[1] = power_factor;
-    package.data[2] = i60.real;
-    package.data[3] = i180.real;
-    package.data[4] = i300.real;
-    package.data[5] = i420.real;
-    package.data[6] = i60.imaginary;
-    package.data[7] = i180.imaginary;
-    package.data[8] = i300.imaginary;
-    package.data[9] = i420.imaginary;
-    write_data();
+    float wifi_package[9] = {active_power,i60.real,i60.imaginary,i180.real,i180.imaginary,i300.real,i300.imaginary,i420.real,i420.imaginary};
+    send_mysql(wifi_package);
 #endif
 }
 
@@ -432,7 +423,7 @@ void process_mode_2(){
 
         float phase_offset = start_phase.phase();
         
-        float active_power = AD.read_long(RAENERGY)*power_ratio;
+        active_power = AD.read_long(RAENERGY)*power_ratio;
 //        if(active_power < min_power)
 //        {
 //            active_power = 0;
@@ -454,7 +445,7 @@ void process_mode_2(){
             else
                 power_factor = active_power/apparent_power;
                 
-            apparent_power *= power_scaler;
+            active_power *= power_scaler;
             int count = find_zero(data);
             if(count < 0)
             {
@@ -476,7 +467,7 @@ void process_mode_2(){
         else
           send_update_i();
           
-        ++recalibrate_counter;
+        //++recalibrate_counter;
         if (recalibrate_counter == RECALIBRATE_CYCLES)
             run = startup;
         else
@@ -565,21 +556,8 @@ void setup() {
     if(Serial)
       Serial.println("Booting!");
 #ifdef WIFI
-    while(!setup_cc3000());  //loop until it connects to wifi
-    if(Serial)
-    {
-        Serial.print("Connecting to IP:");
-        Serial.print(IP);
-        Serial.print(" Port number:");
-        Serial.println(PORTNO);
-    }
-#ifndef USE_UDP
-    while(!tcp_connect(IP, PORTNO))  //loop 
-        if(Serial)
-            Serial.print("Could not connect. Retrying...");
-    Serial.print("Connected!\n"); 
-#endif //UDP
-#endif //WIFI
+    while(!mysql_connect());  //loop until we connect to the server
+#endif    
     PAST_DATA = data + MAX_SAMPLES;
 
     AD.setup();
@@ -588,9 +566,10 @@ void setup() {
     AD.write_byte(GAIN, gain);      // gain adjust
     AD.enable_irq(WSMP);
     AD.enable_irq(CYCEND);
+    AD.write_int(MODE, iMode);  // enable normal mode
     if(Serial)
         Serial.print("Ready to begin!\n");
-    run = startup;
+    run = process_mode;
 }
 
 // the loop function runs over and over again forever
