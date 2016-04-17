@@ -43,11 +43,17 @@ must be the ICSP/SPI header on the DUE. Pin 1 of that header is the corner close
 //#define own_spi
 
 
+long extend(long signed24){
+  if( signed24 & 1<<23 )
+    return signed24|(255<<24);
+}
+
 ////////////////////////////// The Class definition ///////////////////////////////
 
 class AD_Chip{
 public:
   void setup();
+  void reset();
   // TODO: determine needed size of message_goes_here;
 //void read_reg(byte reg, char* message); //modifies message for sending back via serial.
 
@@ -167,7 +173,7 @@ void AD_Chip::setup(){
     // initalize pins:
   pinMode(AD_reset, OUTPUT);
   pinMode(AD_interrupt_pin, INPUT);
-  digitalWrite(AD_reset, HIGH); //reset the AD chip
+  digitalWrite(AD_reset, LOW); //reset the AD chip
 #ifndef DUE
   pinMode(AD_cs_pin, OUTPUT);
   digitalWrite(AD_cs_pin, HIGH);
@@ -220,6 +226,13 @@ void AD_Chip::setup(){
   }
 #endif
 */
+}
+
+void AD_Chip::reset(){
+  digitalWrite(AD_reset, LOW); //put the chip into reset
+  delay(500);
+  digitalWrite(AD_reset, HIGH); //turn the AD chip on (not reset)
+  delay(500);
 }
 
 //no delay needed for reading the waveform
