@@ -140,7 +140,9 @@ bool send_mysql(float data[])
     }
     cursor->execute(call);
     if(Serial){
-      Serial.println(call+21);
+      int last = strlen(call);
+      call[last-2]='\0';
+      Serial.println(call+26);
     }
 }
 
