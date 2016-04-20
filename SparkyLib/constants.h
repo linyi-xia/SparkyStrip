@@ -4,12 +4,6 @@
 #include <math.h>
 
 
-// pins used for AD chip comms
-// other pins are controlled by the SPI library:
-#define AD_interrupt_pin  2  //must be 2 or 3 for uno hardware interrupts (anywhere on due)
-#define AD_reset          9  //logic low is reset
-#define AD_cs_pin         4 //must be 4, 10 or 52 for due
-
 ////// registers///////
 #define last_REG      0x27 //that we care about
 #define max_reg_size  3    //bytes

@@ -38,7 +38,8 @@ with serial.Serial('/dev/tty.usbmodem1421', 115200) as ser:
 				if line == "Begin DataDumper!\n":
 					dump = True 
 					break
-			except (...):
+				print(line.rstrip())
+			except UnicodeDecodeError:
 				pass
 			
 		with open(filename, 'w') as out_file:

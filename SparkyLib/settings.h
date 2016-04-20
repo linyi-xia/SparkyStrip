@@ -4,11 +4,13 @@
 #include "Arduino.h"
 #include <IPAddress.h>
 #include "constants.h"
-#define PI 3.1415926535897932384626433832795
+
 /////////////////////// Settings ////////////////////////////
 
+#define PI 3.1415926535897932384626433832795
+
 //Adjust these to scale values //
-const float power_ratio =  0.848;   //supposedly should be .848
+const float power_ratio =  0.827;   //per manual
 const float power_scaler = .27;  
 const int   min_power = 10;  
 

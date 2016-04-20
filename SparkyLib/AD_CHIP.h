@@ -2,6 +2,10 @@
 #ifndef AD_CHIP_H
 #define AD_CHIP_H
 
+#include <Arduino.h>
+#include <SPI.h>
+#include <constants.h>
+
 /*
 Older setup:
 AD     Arduino    signal
@@ -25,22 +29,12 @@ where ICSP is listed both pins are connected on the uno so either one works,
 must be the ICSP/SPI header on the DUE. Pin 1 of that header is the corner closest to the "ON" led.
 
 */
-
-
-#include "Arduino.h"
-#include "constants.h"
-
-//block below must be copied to the .ino file
-#include <SPI.h>
-#if defined(__arm__) && defined(__SAM3X8E__) // Arduino Due
-  #define DUE 
-  //#include "DueFlashStorage.h"
-#else
-  //#include <EEPROM.h>
-#endif
-
-//uncomment the line below to use my bit-banging SPI implimentation
-//#define own_spi
+// pins used for AD chip comms
+// other pins are controlled by the SPI library:
+#define AD_interrupt_pin  2  //must be 2 or 3 for uno hardware interrupts (anywhere on due)
+#define AD_reset          9  //logic low is reset
+#define AD_cs_pin         4 //must be 4, 10 or 52 for due
+#define AD_zx             A5
 
 
 long extend(long signed24){
@@ -173,6 +167,7 @@ void AD_Chip::setup(){
     // initalize pins:
   pinMode(AD_reset, OUTPUT);
   pinMode(AD_interrupt_pin, INPUT);
+  pinMode(AD_zx, INPUT);
   digitalWrite(AD_reset, LOW); //reset the AD chip
 #ifndef DUE
   pinMode(AD_cs_pin, OUTPUT);

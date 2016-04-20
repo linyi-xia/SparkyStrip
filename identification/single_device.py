@@ -53,7 +53,7 @@ while True:
 						min_dist = dist
 						identity = app[0]
 				if identity:
-					print( 'DataID: {}, Distance: {}, Identity: {}'.format(dataID,dist,identity) )
+					print( 'DataID: {}, Distance: {}, Identity: {}'.format(dataID,min_dist,identity) )
 					cursor.execute( "INSERT INTO DeviceHistory(dataID,appName) VALUES({},'{}');".format(dataID,identity) )
 				else:
 					print('Nothing trained!')

@@ -19,6 +19,11 @@ CREATE TABLE Appliances(
 	d7 FLOAT DEFAULT 0,
 	d8 FLOAT DEFAULT 0,
 	d9 FLOAT DEFAULT 0,
+	d10 FLOAT DEFAULT 0,
+	d11 FLOAT DEFAULT 0,
+	d12 FLOAT DEFAULT 0,
+	d13 FLOAT DEFAULT 0,
+	d14 FLOAT DEFAULT 0,
 	trainCount INT DEFAULT 0,
 	PRIMARY KEY (appName)
 );
@@ -51,6 +56,11 @@ CREATE TABLE RawData(
 	d7 FLOAT NOT NULL,
 	d8 FLOAT NOT NULL,
 	d9 FLOAT NOT NULL,
+	d10 FLOAT NOT NULL,
+	d11 FLOAT NOT NULL,
+	d12 FLOAT NOT NULL,
+	d13 FLOAT NOT NULL,
+	d14 FLOAT NOT NULL,
 	PRIMARY KEY (dataID),
 	FOREIGN KEY(devID) REFERENCES Devices(devID) ON DELETE CASCADE
 );
@@ -138,7 +148,12 @@ CREATE PROCEDURE pushData(
 	IN d_6 FLOAT,
 	IN d_7 FLOAT,
 	IN d_8 FLOAT,
-	IN d_9 FLOAT)
+	IN d_9 FLOAT,
+	IN d_10 FLOAT,
+	IN d_11 FLOAT,
+	IN d_12 FLOAT,
+	IN d_13 FLOAT,
+	IN d_14 FLOAT)
 BEGIN
 	DECLARE _time TIME;
 	DECLARE data_ID, train_count, next_count, i INT;
@@ -152,8 +167,8 @@ BEGIN
 	END IF;
 	
 	# Insert the data
-	INSERT INTO RawData(devID, dateTime, d1, d2, d3, d4, d5, d6, d7, d8, d9)
-		VALUES(@DevID, _time, d_1, d_2, d_3, d_4, d_5, d_6, d_7, d_8, d_9);
+	INSERT INTO RawData(devID, dateTime, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14)
+		VALUES(@DevID, _time, d_1, d_2, d_3, d_4, d_5, d_6, d_7, d_8, d_9, d_10, d_11, d_12, d_13, d_14);
 	
 	# get the dataID from the insertion
 	SELECT LAST_INSERT_ID() 
@@ -198,6 +213,11 @@ BEGIN
 				d7 = (d7 * train_count + d_7) /next_count,
 				d8 = (d8 * train_count + d_8) /next_count,
 				d9 = (d9 * train_count + d_9) /next_count,
+				d10 = (d10 * train_count + d_10) /next_count,
+				d11 = (d11 * train_count + d_11) /next_count,
+				d12 = (d12 * train_count + d_12) /next_count,
+				d13 = (d13 * train_count + d_13) /next_count,
+				d14 = (d14 * train_count + d_14) /next_count,
 				trainCount = next_count
 			WHERE appName = app_name;
 			
@@ -233,7 +253,7 @@ BEGIN
 		WHERE dataID = data_ID;
 	
 	# return the relevant info
-	SELECT updateNum, dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9
+	SELECT updateNum, dataID, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14
 		FROM RawData, AppUpdates
 		WHERE dataID = data_ID;
 END$$
@@ -363,6 +383,5 @@ INSERT INTO Devices(devID, lastStateChange)
 INSERT INTO UserDevices(userID, devID) 
 	VALUES('Dpynes', 11262);
 	
-
 
 

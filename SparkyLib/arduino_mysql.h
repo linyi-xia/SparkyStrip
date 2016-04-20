@@ -1,7 +1,6 @@
 #ifndef ARDUINO_MSQL
 #define ARDUINO_MSQL
 
-#include "settings.h"
 #include <Adafruit_CC3000.h>
 #include <ccspi.h>
 #include <SPI.h>
@@ -20,14 +19,34 @@
 // On an UNO, SCK = 13, MISO = 12, and MOSI = 11
 
 
+const char* _WLAN_SSID;        // cannot be longer than 32 characters!
+const char* _WLAN_PASS;
+
+// Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
+int _WLAN_SECURITY;
+
+//IPAddress server_addr(72,219,144,187);  // IP of the MySQL *server* here
+IPAddress _SERVER_ADDR;
+
+char user[12];                          // MySQL user login username generated from mac address
+char password[] = "sparkystrip_device"; // MySQL user login password
+
+
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
-Adafruit_CC3000_Client client;        // For WiFi connections
-MySQL_Connection conn((Client *)&client);
-MySQL_Cursor *cursor;
+Adafruit_CC3000_Client WIFI_CLIENT;        // For WiFi connections
+MySQL_Connection MYSQL_CONNECTION((Client *)&WIFI_CLIENT);
+MySQL_Cursor *MYSQL_CURSOR;
 
 
 const uint32_t DHCP_TIMEOUT = 50000;
+
+void pass_wifi_values(const char* ssid, const char* password, int wlan_security, const IPAddress& ip){
+  _WLAN_SSID = ssid;
+  _WLAN_PASS = password;
+  _WLAN_SECURITY = wlan_security;
+  _SERVER_ADDR = ip;
+}
 
 bool setup_cc3000()
 {
@@ -43,17 +62,16 @@ bool setup_cc3000()
     while(1);
   }
   /* Attempt to connect to an access point */
-  const char *ssid = WLAN_SSID;             /* Max 32 chars */
   if(Serial){
     Serial.print(F("Connect to ")); 
-    Serial.print(ssid);
+    Serial.print(_WLAN_SSID);
     Serial.print(F("... ")); 
   }
   /* NOTE: Secure connections are not available in 'Tiny' mode!
      By default connectToAP will retry indefinitely, however you can pass an
      optional maximum number of retries (greater than zero) as the fourth parameter.
   */
-  if (!cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
+  if (!cc3000.connectToAP(_WLAN_SSID, _WLAN_PASS, _WLAN_SECURITY)) {
     if(Serial)
       Serial.println(F("Failed!"));
     //while(1);
@@ -109,16 +127,16 @@ bool mysql_connect()
     setup_cc3000();
   if(Serial){
     Serial.print(F("Connecting the MySQL server at "));
-    Serial.print(server_addr);
+    Serial.print(_SERVER_ADDR);
     Serial.print(":");
     Serial.println(3306);
   }
-  if (conn.connect(server_addr, 3306, user, password)) {
+  if (MYSQL_CONNECTION.connect(_SERVER_ADDR, 3306, user, password)) {
     delay(1000);
     // Initiate the query class instance
     if(Serial)
       Serial.println(F("Connected!"));
-    cursor= new MySQL_Cursor(&conn);
+    MYSQL_CURSOR = new MySQL_Cursor(&MYSQL_CONNECTION);
     if(Serial)
       Serial.println(F("Ready to push data!"));
     return true;
@@ -131,14 +149,14 @@ bool mysql_connect()
 bool send_mysql(float data[])
 {
     char call[256];
-    const char call_template[]= "CALL SparkyStrip.pushData(%f,%f,%f,%f,%f,%f,%f,%f,%f);";
-    sprintf(call, call_template, data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8]);
+    const char call_template[]= "CALL SparkyStrip.pushData(%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f);";
+    sprintf(call, call_template, data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11],data[12],data[13]);
     // Execute the call
-    while(!conn.connected()){
-      conn.close();
+    while(!MYSQL_CONNECTION.connected()){
+      MYSQL_CONNECTION.close();
       mysql_connect();
     }
-    cursor->execute(call);
+    MYSQL_CURSOR->execute(call);
     if(Serial){
       int last = strlen(call);
       call[last-2]='\0';
