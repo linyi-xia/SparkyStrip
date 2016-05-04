@@ -15,10 +15,8 @@ import MySQLdb, time
 #	pass
 
 '''
-out_file = open('Local_Data.csv', 'a')
-if out_file.tell() = 0:
-	# if the file is empty write the header
-	out_file.write('timestamp, dataID, Power, data...\n')
+DELETE FROM DeviceHistory;
+INSERT INTO Unprocessed(dataID) SELECT dataID FROM RawData;
 '''
 
 myUpdateNum = 0
@@ -26,7 +24,7 @@ apps = tuple()
 
 while True:
 	try:
-		db = MySQLdb.connect("localhost","sparkyID","squidsofpink","SparkyStrip" )
+		db = MySQLdb.connect("72.219.144.187", "sparkyID","squidsofpink","SparkyStrip" )
 		db.autocommit(True)
 		cursor = db.cursor()
 		print("Connected!")
@@ -39,7 +37,8 @@ while True:
 				if updateNum != myUpdateNum:
 					print('updating appliance stats')
 					cursor.execute( 'SELECT * FROM Appliances;' )
-					apps = cursor.fetchall();
+					apps = [x for x in cursor.fetchall() if x[-1] == 15]
+					print("appliances:\n",apps);
 					myUpdateNum = updateNum
 				identity = None
 				min_dist = 9999999999999

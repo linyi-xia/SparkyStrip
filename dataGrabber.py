@@ -18,7 +18,7 @@ file_num = ''
 file_name_template = 'data/'+sys.argv[1]+'{}.csv'
 dump = False
 
-with serial.Serial('/dev/tty.usbmodem1421', 115200) as ser:
+with serial.Serial('/dev/tty.usbmodem1411', 115200) as ser:
 	time.sleep(2)
 	ser.flush()
 	while True:

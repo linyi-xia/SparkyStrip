@@ -2,86 +2,108 @@
 #include <AD_CHIP.h>
 #include <SPI.h>
 #include <Goertzel.h>
+#include <IPAddress.h>
 
 ////////////////////////// User defined values and switches /////////////////////////////////
+
+// power scalar
+const float POWER_SCALAR = .376; 
+// zero adjust
+const float ACTIVE_ZERO_ADJUST = 0;
+const float APPARENT_ZERO_ADJUST = 0;
+
+// how long we sample the waveform before calculating the values
 const float SECONDS = 1;
-const float POWER_SCALAR = .27; 
-
+// how many calculations to average before sending the data to the server
 const int AVE_COUNT = 4;
+// set the sample rate by this divider - native is 27.9k so divide by 8 for 3.5k
+const int SAMPLE_DIV = 8; 
 
-const float NOTHING_THRESHOLD = 0.1;
-/*
-#define WLAN_SSID       "UCInet Mobile Access"        // cannot be longer than 32 characters!
-#define WLAN_PASS       ""
-// Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
-#define WLAN_SECURITY   WLAN_SEC_UNSEC
-*/
-
+// switches for special modes
 //#define MAG_PHASE
 //#define SWEEP
 //#define DUMPER
 
 // commented out to disable WIFI
-#define WIFI
+//#define WIFI
 
-#ifdef SWEEP 
-#undef WIFI 
-#endif //SWEEP
-#ifdef WIFI 
-#include "arduino_mysql.h"
-#include <ccspi.h>
-  
+//////// Access point config //////////
+
+#define WLAN_SSID       "UCInet Mobile Access"        // cannot be longer than 32 characters!
+#define WLAN_PASS       ""
+// Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
+#define WLAN_SECURITY   WLAN_SEC_UNSEC
+
+/*
   const char* WLAN_SSID = "JeffnTahe";        
   const char* WLAN_PASS  = "1loveTahereh!";
   // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
   const int WLAN_SECURITY = WLAN_SEC_WPA2;
-  
-  //const IPAddress SERVER_ADDRESS(72,219,144,187);  // IP of the MySQL server
-   const IPAddress SERVER_ADDRESS(169,234,209,144);
+*/
 
-#endif
+////////// MySQL server address ////////////
+// 72.219.144.187
+const IPAddress SERVER_ADDRESS(72,219,144,187);  // IP of the MySQL server
+//const IPAddress SERVER_ADDRESS(169,234,209,144);
+
 
 ////////////////////////// should not change /////////////////////////////////
+
+//both these modes don't use wifi so turn it off if it was enabled
+#if defined(SWEEP) || defined(DUMPER) 
+#undef WIFI 
+#endif
+
+#ifdef WIFI 
+#include "arduino_mysql.h"
+#include <ccspi.h>
+#endif
+
 #define INTEGRATOR
 #ifdef INTEGRATOR
   const byte CH1OS_VAL = 0x80;        
   const byte GAIN_VAL = 0x14;          //this one is the gain (page 14 of the datasheet)
+  const float POWER_RATIO =  0.827;   //per manual
 #else
   const byte CH1OS_VAL = 0x00;
   const byte GAIN_VAL = 0x00;
+  const float POWER_RATIO =  0.848;   //per manual
 #endif
 
-const int VMODE = 0x608C;
+const int VMODE = 0x608C;  // sample current on ADC1 at 27.9kps
 const int IMODE = 0x408C;
 
-const float POWER_RATIO =  0.827;   //per manual
-
-
+const int WAVE_COUNT_MASK = SAMPLE_DIV-1;   
 const int HALF_CYCLES = 120*SECONDS;
-const int WAVE_COUNT_MASK = 0x7;   // sample every 8 availible waveforms
-const int MAX_SAMPLES = 3600*SECONDS;
-
-#ifdef DUMPER
-char zx[MAX_SAMPLES];
-#endif
-long samples[MAX_SAMPLES];
+const int MAX_SAMPLES = 29000/SAMPLE_DIV*SECONDS;
 
 ////////////////////////// Global resourses /////////////////////////////////
 
-AD_Chip AD;  //instance of the class that handles the AD chip
+//instance of the class that handles the AD chip
+AD_Chip AD;  
 
+// array of samples we use to calculate our wave info
+long samples[MAX_SAMPLES];  
 
 ////////////////////////////// Main Functions /////////////////////////////
 
+// Separted out AD config so we can reconfigure if the chip resets for some reason
 void configAD(){
   AD.setup();
-  AD.write_int(MODE, IMODE);  // sample current on ADC1 at 27.9kps
+  AD.write_int(MODE, IMODE);  
   AD.write_byte(CH1OS, CH1OS_VAL);    // integrator setting
   AD.write_byte(GAIN, GAIN_VAL);      // gain adjust
   
   AD.enable_irq(WSMP);    // New data is present in the waveform register.
   AD.enable_irq(ZX);      // zero crossing interrupt - we have the pin also, but sometimes it makes sense to read it here
-
+  
+  // if config didn't stick there is a hw issue, so no point in going any further
+  if( AD.read_int(MODE) != IMODE ){
+    Serial.println(F("Error communicating with AD chip, check daughter card is seated properly!"));
+    while(1); //freeze
+  }
+  if(Serial)
+    Serial.println(F("Waiting 5 seconds to allow stabilization...")); 
   // wait few seconds for for readings to stabilize
   int count = 0;
   while( !AD.read_irq() || !AD.irq_set(ZX) || ++count < 600 );
@@ -115,35 +137,55 @@ void setup() {
 void loop(){
   float power_base, max_diff;
   float package[14] = {0};
+  
+  // we average AVE_COUNT signitures together before sending to the server
   for(int outer_i = 0; outer_i < AVE_COUNT ; ++outer_i){
-    int next_outer_i = outer_i+1;
+    int next_outer_i = outer_i+1; //used enough we precalculate it
+    
     // reset our state
     int sample_count = 0;
     int waveform_count = 0;
     int half_cycle_count = 0;
   
-    // if not a neg->pos zero crossing wait until we are on the next positive part
+    // wait until the next neg->pos zero crossing 
     while( digitalRead(AD_zx) );
     while( !digitalRead(AD_zx) );
-    AD.read_irq(); // clear the interrupt status before starting our data grabbing loop
-    AD.read_long(RAENERGY);  // clear the power accumulators
+    // clear the interrupt status before starting our data grabbing loop
+    AD.read_irq(); 
+     // and clear the power accumulators
+    AD.read_long(RAENERGY); 
     AD.read_long(RVAENERGY);
     
     // our "gather data" loop
     while(1){
-      // poll for the next irq
-      while( !AD.read_irq() );
       
-      // if we have a new waveform availible grab it if our count is divisable by 8
+      int watchdog_count = 0;
+      // poll for the next irq
+      while( !AD.read_irq() ){
+        // watchdog counter to detect a chip reset in which a irq will never set
+        if(++watchdog_count > 2000){
+          if( Serial )
+            Serial.println(F("AD chip reset detected, reconfiguring..."));
+          configAD();
+          return; 
+        }
+      }
+      
+      // if we have a new waveform availible grab it if
+      // we set sampling to 29k but we actually use a lower rate (determined in settings)
+      // the reason for this is have finer granularity of starting at the zero crossing for better phase info
+      // for example if WAVE_COUNT_MASK=7 then our real rate is 29k/8
       if( AD.irq_set(WSMP) && !(++waveform_count & WAVE_COUNT_MASK)){
-        long data = AD.read_waveform();
-        samples[sample_count++] = data; 
 #ifdef DUMPER
+// Dumper we compress the data to 3 bytes so otherwise it takes to long to dump live
+// and all we do is constantly dump the waveform over and over
+        long data = AD.read_waveform();
         data &= ~(1<<23);             // clear the msb
         data |= digitalRead(AD_zx)<<23;  // put the ZX signal at the msb
         Serial.write((char*)&data, 3); // spit it out - 3 bytes as that is all Serial can handle realtime
       }
 #else    
+        samples[sample_count++] = AD.read_waveform();
       }
       // if we are at a zero crossing up our count
       // and if that new count equals our target number of half cycles break the "gather data" loop
@@ -154,19 +196,21 @@ void loop(){
       }
 #endif  //DUMPER
     }
+    // another check for AD chip reset - sometimes irq's still work but data is garbage until we reconfigure
     if( AD.read_int(MODE) != IMODE){
       if( Serial )
           Serial.println(F("AD chip reset detected, reconfiguring..."));
       configAD();
       return;
     }
-    // we've reached our number of line-cycles so lets process the data
+    // data collection done. Lets grab our powers
     process_data::N = sample_count;
     process_data::Sample_Rate = sample_count*1.0/SECONDS;
-    float active = AD.read_long(RAENERGY) * (POWER_RATIO * POWER_SCALAR / SECONDS) ;
-    float apparent = AD.read_long(RVAENERGY) * ( POWER_SCALAR / SECONDS);
+    float active = AD.read_long(RAENERGY) * (POWER_RATIO * POWER_SCALAR / SECONDS) + ACTIVE_ZERO_ADJUST;
+    float apparent = AD.read_long(RVAENERGY) * ( POWER_SCALAR / SECONDS) + APPARENT_ZERO_ADJUST;
     float reactive = sqrt(apparent*apparent - active*active);
 #ifdef SWEEP
+// Sweep mode we spit out all the info to check calibration
     Serial.println(sample_count);
     Serial.print(active);
     Serial.print(", "); 
@@ -207,10 +251,11 @@ void loop(){
       }
     }
 #else //SWEEP
-///////// Normal operation here ///////
-
+///////// Normal operation here ////////////
+    // just in case
     if( isnan(reactive) )
        reactive = 0;
+    // depending on how little the power level is we may need diffe
     if( outer_i == 0 ){
       power_base = active;
       if( power_base < 6)
@@ -220,20 +265,18 @@ void loop(){
       else
         max_diff = 1;
     }
-    else if(abs(power_base-active)> max_diff){
+    // we ensure the power didn't change, if so a device changed
+    else if(abs(active-power_base) > max_diff){
       if( Serial ){
         Serial.print(F("Power change of "));
-        Serial.print(abs(power_base-active));
+        Serial.print(power_base-active);
         Serial.println(F(" detected, Starting over..."));
       }
       return;
     }
-    /*Serial.print(active);
-    Serial.print(", "); 
-    Serial.println(active-power_base);
-    */
     
 #ifdef MAG_PHASE
+// displayed every calculation in this mode
     Serial.println();
     Serial.print(next_outer_i);
     Serial.print(", "); 

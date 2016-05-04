@@ -126,6 +126,9 @@ CREATE FUNCTION checkDeviceID(deviceID INT) RETURNS INT
 BEGIN
 	DECLARE ans INT;
 	CALL setUsername();
+	IF @Username = 'root' THEN
+		return 'root';
+	END IF;
 	SELECT devID 
 		FROM UserDevices 
 		WHERE userID = @Username AND devID = deviceID 
