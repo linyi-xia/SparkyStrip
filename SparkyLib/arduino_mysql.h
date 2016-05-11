@@ -10,6 +10,9 @@
 #include <MySQL_Encrypt_Sha1.h>
 #include <MySQL_Packet.h>
 
+#include <common.h>
+#include <watchdog.h>
+
 // These are the interrupt and control pins
 #define ADAFRUIT_CC3000_IRQ   3  // MUST be an interrupt pin!
 // These can be any two pins
@@ -17,6 +20,7 @@
 #define ADAFRUIT_CC3000_CS    10
 // Use hardware SPI for the remaining pins
 // On an UNO, SCK = 13, MISO = 12, and MOSI = 11
+
 
 
 const char* _WLAN_SSID;        // cannot be longer than 32 characters!
@@ -50,16 +54,20 @@ void pass_wifi_values(const char* ssid, const char* password, int wlan_security,
 
 bool setup_cc3000()
 {
+  digitalWrite(RED_LED, LED_OFF);
+  digitalWrite(GREEN_LED, LED_OFF);
+  digitalWrite(AMBER_LED, LED_ON);
+  watchdogReset();
   if (!cc3000.begin())
   {
     if(Serial)
       Serial.println(F("Unable to initialise the CC3000! Check your wiring?"));
-    while(1);
+    go_error(500);
   }
   if (!cc3000.deleteProfiles()) {
     if(Serial)
       Serial.println(F("Failed to deleting old connection profiles!"));
-    while(1);
+    go_error(125);
   }
   /* Attempt to connect to an access point */
   if(Serial){
@@ -71,22 +79,32 @@ bool setup_cc3000()
      By default connectToAP will retry indefinitely, however you can pass an
      optional maximum number of retries (greater than zero) as the fourth parameter.
   */
-  if (!cc3000.connectToAP(_WLAN_SSID, _WLAN_PASS, _WLAN_SECURITY)) {
-    if(Serial)
-      Serial.println(F("Failed!"));
+  digitalWrite(RED_LED, LED_ON);
+  while (!cc3000.connectToAP(_WLAN_SSID, _WLAN_PASS, _WLAN_SECURITY)) {
+    if(Serial){
+      Serial.print(F("Failed! Cannot connect to "));
+      Serial.print(_WLAN_SSID);
+      Serial.println(F("!\nCannot continue, check if SSID is correct!"));
+    }
     //while(1);
-    return false;
+    go_error(250);
   }
-
   if(Serial)
   {
     Serial.print(F("Connected!\nRequesting DHCP"));
   }
-
   uint32_t DHCP_time = 160;
+  bool stat = true;
+  digitalWrite(RED_LED, LED_OFF);
   while (!cc3000.checkDHCP())
   {
-    delay(1000); // ToDo: Insert a DHCP timeout!
+    watchdogReset();
+    delay(1000);
+    stat ^= true;
+    if(stat)
+      digitalWrite(RED_LED, LED_ON);
+    else
+      digitalWrite(RED_LED, LED_OFF);
     if(Serial)
     {
       Serial.print('.');
@@ -100,7 +118,7 @@ bool setup_cc3000()
       return false;
     }
   }
-
+  digitalWrite(RED_LED, LED_OFF);
   if (cc3000.checkConnected())
   {
     union{
@@ -139,6 +157,8 @@ bool mysql_connect()
     MYSQL_CURSOR = new MySQL_Cursor(&MYSQL_CONNECTION);
     if(Serial)
       Serial.println(F("Ready to push data!"));
+    digitalWrite(GREEN_LED, LED_ON);
+    digitalWrite(AMBER_LED, LED_OFF);
     return true;
   }
   else if(Serial)
@@ -148,6 +168,7 @@ bool mysql_connect()
 
 bool send_mysql(float data[])
 {
+    digitalWrite(RED_LED, LED_ON);
     char call[256];
     const char call_template[]= "CALL SparkyStrip.pushData(%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f);";
     sprintf(call, call_template, data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11],data[12],data[13]);
@@ -162,6 +183,7 @@ bool send_mysql(float data[])
       call[last-2]='\0';
       Serial.println(call+26);
     }
+    digitalWrite(RED_LED, LED_OFF);
 }
 
 #endif // ARDUINO_MSQL

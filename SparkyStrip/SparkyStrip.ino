@@ -3,6 +3,8 @@
 #include <SPI.h>
 #include <Goertzel.h>
 #include <IPAddress.h>
+#include <common.h>
+#include <watchdog.h>
 
 ////////////////////////// User defined values and switches /////////////////////////////////
 
@@ -25,7 +27,7 @@ const int SAMPLE_DIV = 8;
 //#define DUMPER
 
 // commented out to disable WIFI
-//#define WIFI
+#define WIFI
 
 //////// Access point config //////////
 
@@ -35,17 +37,16 @@ const int SAMPLE_DIV = 8;
 #define WLAN_SECURITY   WLAN_SEC_UNSEC
 
 /*
-  const char* WLAN_SSID = "JeffnTahe";        
-  const char* WLAN_PASS  = "1loveTahereh!";
+  #define WLAN_SSID "JeffnTahe"
+  #define WLAN_PASS "1loveTahereh!"
   // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
-  const int WLAN_SECURITY = WLAN_SEC_WPA2;
+  #define WLAN_SECURITY WLAN_SEC_WPA2
 */
 
 ////////// MySQL server address ////////////
 // 72.219.144.187
 const IPAddress SERVER_ADDRESS(72,219,144,187);  // IP of the MySQL server
 //const IPAddress SERVER_ADDRESS(169,234,209,144);
-
 
 ////////////////////////// should not change /////////////////////////////////
 
@@ -82,13 +83,24 @@ const int MAX_SAMPLES = 29000/SAMPLE_DIV*SECONDS;
 //instance of the class that handles the AD chip
 AD_Chip AD;  
 
+// the lights
+led Led;
+
 // array of samples we use to calculate our wave info
 long samples[MAX_SAMPLES];  
 
 ////////////////////////////// Main Functions /////////////////////////////
 
+// this function has to be present, otherwise watchdog won't work
+void watchdogSetup(void) 
+{
+// do what you want here
+}
+
 // Separted out AD config so we can reconfigure if the chip resets for some reason
-void configAD(){
+void configAD(bool wait = true){
+  digitalWrite(RED_LED, LED_ON);
+  digitalWrite(AMBER_LED, LED_OFF);
   AD.setup();
   AD.write_int(MODE, IMODE);  
   AD.write_byte(CH1OS, CH1OS_VAL);    // integrator setting
@@ -96,29 +108,53 @@ void configAD(){
   
   AD.enable_irq(WSMP);    // New data is present in the waveform register.
   AD.enable_irq(ZX);      // zero crossing interrupt - we have the pin also, but sometimes it makes sense to read it here
-  
+  digitalWrite(RED_LED, LED_OFF);
+  watchdogReset();
   // if config didn't stick there is a hw issue, so no point in going any further
   if( AD.read_int(MODE) != IMODE ){
     Serial.println(F("Error communicating with AD chip, check daughter card is seated properly!"));
-    while(1); //freeze
+    // freeze here
+    while(1);
   }
-  if(Serial)
-    Serial.println(F("Waiting 5 seconds to allow stabilization...")); 
-  // wait few seconds for for readings to stabilize
-  int count = 0;
-  while( !AD.read_irq() || !AD.irq_set(ZX) || ++count < 600 );
+  if(wait)
+  {
+    if(Serial)
+      Serial.println(F("Waiting 5 seconds to allow stabilization...")); 
+    // wait few seconds for for readings to stabilize
+    int count = 0;
+    digitalWrite(AMBER_LED, LED_ON);
+    while( !AD.read_irq() || !AD.irq_set(ZX) || ++count < 600 );
+    digitalWrite(AMBER_LED, LED_OFF);
+  }
 }
 
 //the setup function runs once when reset button pressed, board powered on, or serial connection
 void setup() {
-  Serial.begin(115200); 
+  // Enable watchdog timer for 20 seconds
+  watchdogEnable(20000);
+  Serial.begin(115200);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(AMBER_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+  digitalWrite(GREEN_LED, LED_ON);
+  digitalWrite(AMBER_LED, LED_ON);
+  digitalWrite(RED_LED, LED_ON);
+  delay(2000);
+  digitalWrite(GREEN_LED, LED_OFF);
+  digitalWrite(AMBER_LED, LED_OFF);
+  digitalWrite(RED_LED, LED_OFF);
+  delay(1000);
   if(Serial)
     Serial.println(F("Booting!")); 
 #ifdef WIFI
+  configAD(false);
   pass_wifi_values(WLAN_SSID, WLAN_PASS, WLAN_SECURITY, SERVER_ADDRESS);
   while(!mysql_connect());  //loop until we connect to the server
-#endif    
+#else
   configAD();
+#endif    
+
+  
   
 #ifdef  DUMPER
   Serial.print(F("Begin DataDumper!\n"));
@@ -135,13 +171,17 @@ void setup() {
 
 // runs over and over again forever
 void loop(){
+  watchdogReset();
   float power_base, max_diff;
   float package[14] = {0};
-  
+  if( Serial )
+        Serial.print(' ');
   // we average AVE_COUNT signitures together before sending to the server
   for(int outer_i = 0; outer_i < AVE_COUNT ; ++outer_i){
     int next_outer_i = outer_i+1; //used enough we precalculate it
-    
+    if( Serial )
+        Serial.print(next_outer_i);
+    digitalWrite(AMBER_LED, LED_ON);
     // reset our state
     int sample_count = 0;
     int waveform_count = 0;
@@ -155,6 +195,7 @@ void loop(){
      // and clear the power accumulators
     AD.read_long(RAENERGY); 
     AD.read_long(RVAENERGY);
+
     
     // our "gather data" loop
     while(1){
@@ -203,6 +244,7 @@ void loop(){
       configAD();
       return;
     }
+    digitalWrite(AMBER_LED, LED_OFF);
     // data collection done. Lets grab our powers
     process_data::N = sample_count;
     process_data::Sample_Rate = sample_count*1.0/SECONDS;
@@ -310,8 +352,12 @@ void loop(){
       Serial.println();
 #endif //MAG_PHASE
     }
+    if( Serial )
+        Serial.print(F(", "));
     if(next_outer_i == AVE_COUNT){
 #ifdef WIFI
+      if( Serial )
+        Serial.println(F("Sending:"));
       send_mysql(package);
 #else  //WIFI
       if( Serial ){
