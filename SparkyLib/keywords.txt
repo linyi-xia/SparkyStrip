@@ -1,0 +1,4 @@
+Led 	KEYWORD1
+on 		KEYWORD1
+off 	KEYWORD1
+toggle	KEYWORD1

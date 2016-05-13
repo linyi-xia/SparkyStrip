@@ -1,10 +1,12 @@
 
-#include <AD_CHIP.h>
+
 #include <SPI.h>
-#include <Goertzel.h>
 #include <IPAddress.h>
-#include <common.h>
 #include <watchdog.h>
+
+#include <Led.h>
+#include <Goertzel.h>
+#include <AD_CHIP.h>
 
 ////////////////////////// User defined values and switches /////////////////////////////////
 
@@ -83,24 +85,23 @@ const int MAX_SAMPLES = 29000/SAMPLE_DIV*SECONDS;
 //instance of the class that handles the AD chip
 AD_Chip AD;  
 
-// the lights
-led Led;
 
 // array of samples we use to calculate our wave info
 long samples[MAX_SAMPLES];  
 
 ////////////////////////////// Main Functions /////////////////////////////
 
-// this function has to be present, otherwise watchdog won't work
+/* this function has to be present, otherwise watchdog won't work
 void watchdogSetup(void) 
 {
 // do what you want here
 }
+*/
 
 // Separted out AD config so we can reconfigure if the chip resets for some reason
 void configAD(bool wait = true){
-  digitalWrite(RED_LED, LED_ON);
-  digitalWrite(AMBER_LED, LED_OFF);
+  Led.on(RED);
+  Led.off(AMBER);
   AD.setup();
   AD.write_int(MODE, IMODE);  
   AD.write_byte(CH1OS, CH1OS_VAL);    // integrator setting
@@ -108,7 +109,7 @@ void configAD(bool wait = true){
   
   AD.enable_irq(WSMP);    // New data is present in the waveform register.
   AD.enable_irq(ZX);      // zero crossing interrupt - we have the pin also, but sometimes it makes sense to read it here
-  digitalWrite(RED_LED, LED_OFF);
+  Led.off(RED);
   watchdogReset();
   // if config didn't stick there is a hw issue, so no point in going any further
   if( AD.read_int(MODE) != IMODE ){
@@ -122,30 +123,27 @@ void configAD(bool wait = true){
       Serial.println(F("Waiting 5 seconds to allow stabilization...")); 
     // wait few seconds for for readings to stabilize
     int count = 0;
-    digitalWrite(AMBER_LED, LED_ON);
+    Led.on(AMBER);
     while( !AD.read_irq() || !AD.irq_set(ZX) || ++count < 600 );
-    digitalWrite(AMBER_LED, LED_OFF);
+    Led.off(AMBER);
   }
 }
 
 //the setup function runs once when reset button pressed, board powered on, or serial connection
 void setup() {
   // Enable watchdog timer for 20 seconds
-  watchdogEnable(20000);
+  //watchdogEnable(60000);
   Serial.begin(115200);
-  pinMode(GREEN_LED, OUTPUT);
-  pinMode(AMBER_LED, OUTPUT);
-  pinMode(RED_LED, OUTPUT);
-  digitalWrite(GREEN_LED, LED_ON);
-  digitalWrite(AMBER_LED, LED_ON);
-  digitalWrite(RED_LED, LED_ON);
+  Led.on(GREEN);
+  Led.on(AMBER);
+  Led.on(RED);
   delay(2000);
-  digitalWrite(GREEN_LED, LED_OFF);
-  digitalWrite(AMBER_LED, LED_OFF);
-  digitalWrite(RED_LED, LED_OFF);
+  Led.off(GREEN);
+  Led.off(AMBER);
+  Led.off(RED);
   delay(1000);
   if(Serial)
-    Serial.println(F("Booting!")); 
+    Serial.println(F("\nBooting!")); 
 #ifdef WIFI
   configAD(false);
   pass_wifi_values(WLAN_SSID, WLAN_PASS, WLAN_SECURITY, SERVER_ADDRESS);
@@ -154,8 +152,6 @@ void setup() {
   configAD();
 #endif    
 
-  
-  
 #ifdef  DUMPER
   Serial.print(F("Begin DataDumper!\n"));
   Serial.print( AD.read_long(LAENERGY) / SECONDS * power_ratio * power_scaler );
@@ -174,14 +170,18 @@ void loop(){
   watchdogReset();
   float power_base, max_diff;
   float package[14] = {0};
-  if( Serial )
-        Serial.print(' ');
+#ifdef WIFI
+    if( Serial )
+        Serial.print(" ");
+#endif
   // we average AVE_COUNT signitures together before sending to the server
   for(int outer_i = 0; outer_i < AVE_COUNT ; ++outer_i){
     int next_outer_i = outer_i+1; //used enough we precalculate it
+#ifdef WIFI
     if( Serial )
         Serial.print(next_outer_i);
-    digitalWrite(AMBER_LED, LED_ON);
+#endif
+    Led.on(AMBER);
     // reset our state
     int sample_count = 0;
     int waveform_count = 0;
@@ -244,7 +244,7 @@ void loop(){
       configAD();
       return;
     }
-    digitalWrite(AMBER_LED, LED_OFF);
+    Led.off(AMBER);
     // data collection done. Lets grab our powers
     process_data::N = sample_count;
     process_data::Sample_Rate = sample_count*1.0/SECONDS;
@@ -300,12 +300,12 @@ void loop(){
     // depending on how little the power level is we may need diffe
     if( outer_i == 0 ){
       power_base = active;
-      if( power_base < 6)
+      if( power_base < 8)
         max_diff = 2.5;
       if( power_base < 15)
-        max_diff = 1.5;
+        max_diff = 2;
       else
-        max_diff = 1;
+        max_diff = 1.6;
     }
     // we ensure the power didn't change, if so a device changed
     else if(abs(active-power_base) > max_diff){
@@ -352,12 +352,12 @@ void loop(){
       Serial.println();
 #endif //MAG_PHASE
     }
+#ifdef WIFI
     if( Serial )
         Serial.print(F(", "));
+#endif
     if(next_outer_i == AVE_COUNT){
 #ifdef WIFI
-      if( Serial )
-        Serial.println(F("Sending:"));
       send_mysql(package);
 #else  //WIFI
       if( Serial ){

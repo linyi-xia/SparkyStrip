@@ -82,6 +82,7 @@ CREATE TABLE Unprocessed(
 CREATE TABLE UserDevices(
 	userID VARCHAR(80),
 	devID INT,
+	devName VARCHAR(80),
 	PRIMARY KEY (userID, devID),
 	FOREIGN KEY(devID) REFERENCES Devices(devID) ON DELETE CASCADE
 );
@@ -266,10 +267,12 @@ DELIMITER ;
 # used by the app to get the history of a device - with a limit (1 returns just most recent)
 DELIMITER $$
 CREATE PROCEDURE getHistory(
-	IN deviceID INT,
+	IN deviceName VARCHAR(80),
 	IN histLimit INT
 )
 BEGIN
+	DECLARE deviceID INT;
+	SELECT devID FROM UserDevices WHERE devName = deviceName INTO deviceID;
 	IF checkDeviceID(deviceID) IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERROR: Device not associated with user!';
 	ELSE
@@ -285,10 +288,12 @@ DELIMITER ;
 # setup training mode (which happens within mysql)
 DELIMITER $$
 CREATE PROCEDURE setTraining(
-	IN deviceID INT,
+	IN deviceName VARCHAR(80),
 	IN applianceName VARCHAR(80)
 )
 BEGIN
+	DECLARE deviceID INT;
+	SELECT devID FROM UserDevices WHERE devName = deviceName INTO deviceID;
 	IF checkDeviceID(deviceID) IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERROR: Device not associated with user!';
 	ELSE
@@ -321,7 +326,7 @@ DELIMITER $$
 CREATE PROCEDURE viewDevices()
 BEGIN
 	CALL setUsername();
-	SELECT devID, lastStateChange, appName as trainingAppliance, lastPush 
+	SELECT devID, devName, lastStateChange, appName as trainingAppliance, lastPush 
 		FROM Devices
 		NATURAL JOIN (SELECT * 
 			FROM UserDevices
@@ -370,8 +375,8 @@ GRANT
 
 INSERT INTO Devices(devID, lastStateChange) 
 	VALUES(123, NOW());
-INSERT INTO UserDevices(userID, devID) 
-	VALUES('Dpynes', 123);
+INSERT INTO UserDevices(userID, devID, devName) 
+	VALUES('Dpynes', 123, "Kitchen");
 	
 # actual device	
 DROP USER 'd11262'@'%';
@@ -383,8 +388,8 @@ GRANT
 
 INSERT INTO Devices(devID, lastStateChange) 
 	VALUES(11262, NOW());
-INSERT INTO UserDevices(userID, devID) 
-	VALUES('Dpynes', 11262);
+INSERT INTO UserDevices(userID, devID, devName)
+	VALUES('Dpynes', 11262, "LivingRoom");
 	
 
 

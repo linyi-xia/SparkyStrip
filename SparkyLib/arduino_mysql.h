@@ -4,14 +4,15 @@
 #include <Adafruit_CC3000.h>
 #include <ccspi.h>
 #include <SPI.h>
+#include <watchdog.h>
 
 #include <MySQL_Connection.h>
 #include <MySQL_Cursor.h>
 #include <MySQL_Encrypt_Sha1.h>
 #include <MySQL_Packet.h>
 
-#include <common.h>
-#include <watchdog.h>
+#include <Led.h>
+
 
 // These are the interrupt and control pins
 #define ADAFRUIT_CC3000_IRQ   3  // MUST be an interrupt pin!
@@ -40,7 +41,6 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 Adafruit_CC3000_Client WIFI_CLIENT;        // For WiFi connections
 MySQL_Connection MYSQL_CONNECTION((Client *)&WIFI_CLIENT);
-MySQL_Cursor *MYSQL_CURSOR;
 
 
 const uint32_t DHCP_TIMEOUT = 50000;
@@ -54,20 +54,20 @@ void pass_wifi_values(const char* ssid, const char* password, int wlan_security,
 
 bool setup_cc3000()
 {
-  digitalWrite(RED_LED, LED_OFF);
-  digitalWrite(GREEN_LED, LED_OFF);
-  digitalWrite(AMBER_LED, LED_ON);
+  Led.off(RED);
+  Led.on(AMBER);
+  Led.off(GREEN);
   watchdogReset();
   if (!cc3000.begin())
   {
     if(Serial)
       Serial.println(F("Unable to initialise the CC3000! Check your wiring?"));
-    go_error(500);
+    while(1);
   }
   if (!cc3000.deleteProfiles()) {
     if(Serial)
       Serial.println(F("Failed to deleting old connection profiles!"));
-    go_error(125);
+    while(1);
   }
   /* Attempt to connect to an access point */
   if(Serial){
@@ -79,32 +79,31 @@ bool setup_cc3000()
      By default connectToAP will retry indefinitely, however you can pass an
      optional maximum number of retries (greater than zero) as the fourth parameter.
   */
-  digitalWrite(RED_LED, LED_ON);
+  Led.on(RED);
   while (!cc3000.connectToAP(_WLAN_SSID, _WLAN_PASS, _WLAN_SECURITY)) {
     if(Serial){
       Serial.print(F("Failed! Cannot connect to "));
       Serial.print(_WLAN_SSID);
       Serial.println(F("!\nCannot continue, check if SSID is correct!"));
     }
-    //while(1);
-    go_error(250);
+    while(1);
   }
   if(Serial)
   {
     Serial.print(F("Connected!\nRequesting DHCP"));
   }
   uint32_t DHCP_time = 160;
-  bool stat = true;
-  digitalWrite(RED_LED, LED_OFF);
+  bool status = true;
   while (!cc3000.checkDHCP())
   {
     watchdogReset();
-    delay(1000);
-    stat ^= true;
-    if(stat)
-      digitalWrite(RED_LED, LED_ON);
+    status ^= true;
+    if(status)
+      Led.on(RED);
     else
-      digitalWrite(RED_LED, LED_OFF);
+      Led.off(RED);
+
+    delay(1000);
     if(Serial)
     {
       Serial.print('.');
@@ -118,7 +117,7 @@ bool setup_cc3000()
       return false;
     }
   }
-  digitalWrite(RED_LED, LED_OFF);
+  Led.off(RED);
   if (cc3000.checkConnected())
   {
     union{
@@ -141,7 +140,7 @@ bool setup_cc3000()
 
 bool mysql_connect() 
 {
-  while(!cc3000.checkConnected())
+  while(!cc3000.checkDHCP())
     setup_cc3000();
   if(Serial){
     Serial.print(F("Connecting the MySQL server at "));
@@ -149,16 +148,15 @@ bool mysql_connect()
     Serial.print(":");
     Serial.println(3306);
   }
+  watchdogReset();
   if (MYSQL_CONNECTION.connect(_SERVER_ADDR, 3306, user, password)) {
     delay(1000);
     // Initiate the query class instance
     if(Serial)
       Serial.println(F("Connected!"));
-    MYSQL_CURSOR = new MySQL_Cursor(&MYSQL_CONNECTION);
-    if(Serial)
-      Serial.println(F("Ready to push data!"));
-    digitalWrite(GREEN_LED, LED_ON);
-    digitalWrite(AMBER_LED, LED_OFF);
+    
+    Led.on(GREEN);
+    Led.off(AMBER);
     return true;
   }
   else if(Serial)
@@ -168,22 +166,29 @@ bool mysql_connect()
 
 bool send_mysql(float data[])
 {
-    digitalWrite(RED_LED, LED_ON);
+    Led.on(RED);
     char call[256];
     const char call_template[]= "CALL SparkyStrip.pushData(%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f);";
     sprintf(call, call_template, data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11],data[12],data[13]);
     // Execute the call
-    while(!MYSQL_CONNECTION.connected()){
+    while(!cc3000.checkDHCP() || !MYSQL_CONNECTION.connected()){
       MYSQL_CONNECTION.close();
+      cc3000.reboot();
       mysql_connect();
     }
-    MYSQL_CURSOR->execute(call);
+    if( Serial )
+        Serial.print(F("Send"));
+    MySQL_Cursor *cursor = new MySQL_Cursor(&MYSQL_CONNECTION);
+    if( Serial )
+        Serial.println(F("ing:"));
+    cursor->execute(call);
+    delete cursor;
     if(Serial){
       int last = strlen(call);
       call[last-2]='\0';
       Serial.println(call+26);
     }
-    digitalWrite(RED_LED, LED_OFF);
+    Led.off(RED);
 }
 
 #endif // ARDUINO_MSQL
