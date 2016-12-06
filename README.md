@@ -7,3 +7,9 @@ More information coming later.
 - Custom PCB with Arduino Due
 - MongoDB at first then we switched to MySQL
 - Web interface displaying the recognition result
+
+# Team Members
+- Linyi Xia: Project lead and hardware engineer
+- Jeff Thompson: Main firmware and algorithm developer
+- Edmond Loo: Wi-Fi interface developer
+- David Pynes: Web and MySQL developer 
