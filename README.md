@@ -11,5 +11,6 @@ More information coming later.
 # Team Members
 - Linyi Xia: Project lead and hardware engineer
 - Jeff Thompson: Main firmware and algorithm developer
-- Edmond Loo: Wi-Fi interface developer
 - David Pynes: Web and MySQL developer 
+- Edmond Loo: Wi-Fi interface developer
+
